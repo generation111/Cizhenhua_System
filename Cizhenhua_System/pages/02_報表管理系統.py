@@ -83,7 +83,7 @@ def load_all_data():
         
         # 2. 【佰哥關鍵動作】：請將下方引號內文字換成您試算表網址中的那串 ID
         # 網址長這樣：https://docs.google.com/spreadsheets/d/【這串就是ID】/edit
-        SPREADSHEET_ID = "1B_pS9y6-v_CqMv6lO6U5oB3hS3O0_X4q8j-S9v6M123" # <--- 請換成您的 ID
+        SPREADSHEET_ID = "1w2BDsPHHxgaz6PJhoPLXdh0UQJplA6rr42wLoLQIM9s" # <--- 請換成您的 ID
         
         sh = gc.open_by_key(SPREADSHEET_ID)
         ws = sh.worksheet("回應試算表")
