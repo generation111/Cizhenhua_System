@@ -34,22 +34,46 @@ st.markdown("""
 import streamlit as st
 import gspread
 from google.oauth2.service_account import Credentials
+import re
 
 @st.cache_resource(ttl=60)
 def get_ss():
     try:
         # 1. 取得 Secrets 字典
-        creds_dict = st.secrets["gcp_service_account"].to_dict()
+        creds_info = st.secrets["gcp_service_account"].to_dict()
         
-        # 2. 自動處理金鑰中的 \n 文字，確保格式正確
-        if "private_key" in creds_dict:
-            creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
+        if "private_key" in creds_info:
+            raw_key = creds_info["private_key"]
+            
+            # --- 核心修復：徹底重建 PEM 格式 ---
+            # 1. 把所有內容連成一條長線，移除所有換行、標頭、結尾、空格和引號
+            core_content = raw_key.replace("-----BEGIN PRIVATE KEY-----", "") \
+                                  .replace("-----END PRIVATE KEY-----", "") \
+                                  .replace("\\n", "").replace("\n", "") \
+                                  .replace("\r", "").replace('"', '') \
+                                  .replace(" ", "").strip()
+            
+            # 2. 重新手工組裝：每 64 個字元換一行（這是 Google 要求的嚴格標準）
+            formatted_key = "-----BEGIN PRIVATE KEY-----\n"
+            for i in range(0, len(core_content), 64):
+                line = core_content[i:i+64]
+                if line:
+                    formatted_key += line + "\n"
+            
+            # 確保最後一行有換行，再接結尾
+            if not formatted_key.endswith("\n"):
+                formatted_key += "\n"
+            formatted_key += "-----END PRIVATE KEY-----\n"
+            
+            # 3. 把修好後的金鑰塞回去
+            creds_info["private_key"] = formatted_key
             
         scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-        creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
+        creds = Credentials.from_service_account_info(creds_info, scopes=scope)
         
-        # SPREADSHEET_ID 請確保已在代碼上方定義
+        # 請確保 SPREADSHEET_ID 已經定義
         return gspread.authorize(creds).open_by_key(SPREADSHEET_ID)
+        
     except Exception as e:
         st.error(f"❌ 資料庫連線失敗: {str(e)}")
         return None
