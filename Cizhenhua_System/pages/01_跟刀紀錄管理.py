@@ -31,42 +31,26 @@ st.markdown("""
 
 # --- 3. 數據連線 ---
 
-import base64
-import re
+import json
 
 @st.cache_resource(ttl=60)
 def get_ss():
     try:
-        # 1. 取得除了私鑰以外的其他連線資訊
-        creds_info = st.secrets["gcp_service_account"].to_dict()
+        # 從 Secrets 讀取那塊 JSON
+        json_raw = st.secrets["gcp_service_account"]["json_content"]
+        creds_info = json.loads(json_raw)
         
-        # 2. 直接在代碼中填入您的私鑰內容 (避免 Secrets 框的格式干擾)
-        # 請確保這裡貼上的是您原始 JSON 檔中 "private_key" 的完整內容
-        raw_key = """-----BEGIN PRIVATE KEY-----
-貼上您的私鑰內容...
------END PRIVATE KEY-----"""
-
-        # 3. 強制格式清洗：移除所有轉義斜槓、引號，並重新排版
-        clean_key = raw_key.replace("\\n", "\n").replace('"', '').strip()
-        
-        # 如果金鑰變成了橫向的一長條，強行恢復 64 字元換行的標準 PEM 格式
-        if "\n" not in clean_key.replace("-----BEGIN PRIVATE KEY-----", "").strip():
-            core = clean_key.replace("-----BEGIN PRIVATE KEY-----", "").replace("-----END PRIVATE KEY-----", "").replace("\n", "").strip()
-            clean_key = "-----BEGIN PRIVATE KEY-----\n"
-            for i in range(0, len(core), 64):
-                clean_key += core[i:i+64] + "\n"
-            clean_key += "-----END PRIVATE KEY-----\n"
-
-        # 4. 指派給 Google 驗證工具
-        creds_info["private_key"] = clean_key
-        
+        # 修復私鑰內的換行符號
+        if "private_key" in creds_info:
+            creds_info["private_key"] = creds_info["private_key"].replace("\\n", "\n")
+            
         scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
         creds = Credentials.from_service_account_info(creds_info, scopes=scope)
         return gspread.authorize(creds).open_by_key(SPREADSHEET_ID)
-        
     except Exception as e:
         st.error(f"❌ 資料庫連線失敗: {str(e)}")
         return None
+
 
 ss = get_ss()
 
