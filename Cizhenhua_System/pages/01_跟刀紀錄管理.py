@@ -33,15 +33,17 @@ st.markdown("""
 
 @st.cache_resource(ttl=60)
 def get_ss():
-    """建立連線並自動處理 Secrets 解析錯誤"""
     try:
-        scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-        # 將 secrets 轉為 dict 並強制修復 private_key 的格式
+        # 1. 取得原始資訊
         creds_info = st.secrets["gcp_service_account"].to_dict()
+        
+        # 2. 強制修復金鑰格式 (去除前後空格並處理換行)
         if "private_key" in creds_info:
-            # 關鍵修正：解決 InvalidByte 與 InvalidPadding 問題
-            creds_info["private_key"] = creds_info["private_key"].replace("\\n", "\n").strip()
+            raw_key = creds_info["private_key"]
+            # 移除所有隱形空格並確保換行符號正確
+            creds_info["private_key"] = raw_key.replace("\\n", "\n").strip()
             
+        scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
         creds = Credentials.from_service_account_info(creds_info, scopes=scope)
         return gspread.authorize(creds).open_by_key(SPREADSHEET_ID)
     except Exception as e:
