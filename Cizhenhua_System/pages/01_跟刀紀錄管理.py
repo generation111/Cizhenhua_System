@@ -43,32 +43,33 @@ def get_ss():
         if "private_key_base64" in creds_info:
             b64_str = creds_info["private_key_base64"]
             
-            # --- 超級濾網：只保留 Base64 絕對合法的字元 ---
-            # 徹底剔除所有可能導致 InvalidByte 的空格、引號、反斜線或隱形字元
+            # --- 核心修正 1：強力過濾垃圾字元 ---
+            # 只保留 [A-Z, a-z, 0-9, +, /, =]，徹底剔除隱形換行或特殊空白
             b64_clean = "".join(re.findall(r'[A-Za-z0-9+/=]', b64_str))
             
-            # 2. 解碼並轉換為文字（使用 latin-1 確保不報編碼錯）
+            # 2. 解碼（使用 latin-1 確保不報 utf-8 編碼錯）
             decoded_text = base64.b64decode(b64_clean).decode("latin-1")
             
-            # 3. 提取核心金鑰（移除所有已存在的標頭標尾、換行與轉義字元）
+            # --- 核心修正 2：手動重建 PEM 結構 ---
+            # 移除所有已存在的標頭、結尾、物理斜槓 \\n 與物理換行
             core_content = decoded_text.replace("-----BEGIN PRIVATE KEY-----", "") \
                                        .replace("-----END PRIVATE KEY-----", "") \
                                        .replace("\\n", "").replace("\n", "") \
                                        .replace("\r", "").replace('"', '') \
                                        .replace(" ", "").strip()
             
-            # 4. 重新手工組裝標準 PEM 格式 (每 64 字元換行)
+            # 重新手工組裝：每 64 個字元換一行（這是最標準的 PEM 格式）
             formatted_key = "-----BEGIN PRIVATE KEY-----\n"
             for i in range(0, len(core_content), 64):
                 formatted_key += core_content[i:i+64] + "\n"
             formatted_key += "-----END PRIVATE KEY-----\n"
             
-            # 5. 強制塞回 Google 規定的標籤
+            # 3. 塞回 Google 規定的標籤
             creds_info["private_key"] = formatted_key
             
         scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
         
-        # 6. 執行驗證
+        # 4. 執行驗證
         creds = Credentials.from_service_account_info(creds_info, scopes=scope)
         return gspread.authorize(creds).open_by_key(SPREADSHEET_ID)
         
