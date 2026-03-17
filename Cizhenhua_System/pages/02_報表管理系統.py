@@ -65,28 +65,40 @@ st.set_page_config(
 
 # --- 2. 側邊欄與 UI 樣式優化 ---
 # --- 修改 CSS 樣式區塊 ---
+# --- 修正後的 CSS 樣式區塊 ---
 st.markdown("""
 <style>
-    /* 1. 強制產品按鈕文字不換行，並維持單行顯示 */
-    div.stButton > button p {
-        white-space: nowrap !important;
-        overflow: hidden;
-        text-overflow: ellipsis;
+    /* 1. 調整整體內容寬度：給予足夠空間讓 5 欄按鈕伸展 */
+    [data-testid="stAppViewContainer"] > section:nth-child(2) > div:nth-child(1) {
+        max-width: 1300px !important; /* 從 1200 稍微放寬到 1300 */
+        margin: 0 auto !important;
     }
 
-    /* 2. 微調按鈕內距，讓文字有更多空間伸展 */
+    /* 2. 解決按鈕文字縮成兩行：強制單行並微調字體 */
     div.stButton > button {
-        padding-left: 5px !important;
-        padding-right: 5px !important;
-        min-width: 80px !important; /* 給予最小寬度防止過窄 */
+        padding: 0px 2px !important; /* 縮小左右內距 */
+        min-height: 45px !important;
+    }
+    
+    div.stButton > button p {
+        white-space: nowrap !important; /* 強制不換行 */
+        font-size: 14px !important;    /* 稍微縮小字體確保裝得下 */
+        overflow: hidden;
+        text-overflow: clip;           /* 就算超出一點點也不要變兩行 */
     }
 
-    /* 3. 針對產品快速選取區塊的欄位間距優化 */
-    [data-testid="column"] {
-        gap: 0.5rem !important;
+    /* 3. 解決標題太靠頂部與側邊欄空白感 */
+    .block-container { 
+        padding-top: 2.5rem !important; 
+    }
+    
+    /* 4. 側邊欄優化：縮小側邊欄按鈕的間距，減少左側空洞感 */
+    [data-testid="stSidebarNav"] {
+        padding-top: 20px !important;
     }
 </style>
 """, unsafe_allow_html=True)
+
 
 # --- 3. 全域手勢支援 ---
 swipe_js = """
