@@ -8,7 +8,6 @@ import streamlit.components.v1 as components
 SYS_TITLE = "慈榛驊業務管理系統（全功能終極修復版）"
 
 # --- 2. 縮放鎖定 (Viewport Lock) ---
-# 強制手機 1:1 顯示，解決各分頁縮放連動問題
 components.html(
     """
     <script>
@@ -24,18 +23,15 @@ components.html(
 # --- 3. 樣式優化 (標題貼頂 + 移除白框 + 按鈕單行瘦身) ---
 st.markdown("""
 <style>
-    /* 移除側邊欄多餘白框與背景優化 */
     [data-testid="stSidebar"] { background-color: #f0f2f6; }
     [data-testid="stSidebarNav"] { background-color: transparent !important; }
 
-    /* 頁面內容寬度與貼頂設定 */
     .block-container { 
-        padding-top: 3.5rem !important; 
+        padding-top: 0.5rem !important; 
         max-width: 1300px !important; 
         margin: 0 auto !important; 
     }
     
-    /* 系統標題：極限貼頂 */
     .sys-title { 
         text-align: center; 
         font-size: 24px !important; 
@@ -46,7 +42,6 @@ st.markdown("""
         white-space: nowrap;
     }
 
-    /* 產品按鈕瘦身：高度縮小、文字絕對單行 */
     div.stButton > button {
         height: 35px !important;
         padding: 0px 4px !important;
@@ -62,7 +57,6 @@ st.markdown("""
         overflow: hidden;
     }
 
-    /* 隱藏頂部預設橫條 */
     [data-testid="stHeader"] { visibility: hidden; }
     footer { visibility: hidden; }
 </style>
@@ -71,54 +65,35 @@ st.markdown("""
 # --- 4. 顯示系統標題 ---
 st.markdown(f'<div class="sys-title">📊 {SYS_TITLE}</div>', unsafe_allow_html=True)
 
-# --- 5. 官方推薦穩定連線法 (修復 Response 200 問題) ---
+# --- 5. 更新後的資料連線函式 ---
+@st.cache_data(ttl=60)
 def load_all_data():
     try:
-        # 1. 取得金鑰與授權
+        # 取得金鑰並修復換行符號
         info = dict(st.secrets["gcp_service_account"])
         info["private_key"] = info["private_key"].replace("\\n", "\n")
+        
         scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
         creds = Credentials.from_service_account_info(info, scopes=scopes)
         gc = gspread.authorize(creds)
         
-        # 2. 試算表網址 (已根據您的輸入校對)
-        SHEET_URL = "https://docs.google.com/spreadsheets/d/1w2BDsPHHxgaz6PJhoPLXdh0UQJplA6rr42wLoLQIM9s/edit"
-        
-        # 使用網址開啟
+        # 使用您提供的新網址
+        SHEET_URL = "https://docs.google.com/spreadsheets/d/1FREJX9NPtyVcAG1jou4jD0MjbAVoW-treZTpsmehCks/edit"
         sh = gc.open_by_url(SHEET_URL)
         
-        # 3. 指定分頁：根據您的網址 gid=1982907342，嘗試精確開啟
-        # 我們先嘗試用名稱「回應試算表」，若失敗則嘗試該 gid 對應的分頁
-        try:
-            ws = sh.worksheet("回應試算表")
-        except:
-            # 如果名稱不對，改用暴力搜尋法找符合該 gid 的分頁
-            ws = None
-            for sheet in sh.worksheets():
-                if str(sheet.id) == "1982907342":
-                    ws = sheet
-                    break
-            if ws is None:
-                ws = sh.get_worksheet(0) # 最終保險：開第一個
+        # 指定分頁名稱「表單回應 1」
+        ws = sh.worksheet("表單回應 1")
         
         rows = ws.get_all_values()
-        if not rows:
+        if not rows or len(rows) < 1:
             return pd.DataFrame()
             
         return pd.DataFrame(rows[1:], columns=rows[0])
 
     except Exception as e:
-        # 這裡是解決 404 的終極提示
         st.error(f"❌ 讀取失敗：{str(e)}")
-        # 顯示需要共用的 Email，方便佰哥直接複製
         service_email = st.secrets["gcp_service_account"]["client_email"]
-        st.info(f"💡 請檢查：是否已將此試算表『共用』給以下 Email：\n\n`{service_email}`")
-        return pd.DataFrame()
-
-    except Exception as e:
-        # 顯示更精確的錯誤訊息
-        st.error(f"❌ 讀取失敗：{str(e)}")
-        st.warning("請檢查：1. 網址是否正確 2. 試算表是否有共用給 Service Account 的 Email")
+        st.info(f"💡 請確保已將此表單『共用』給：\n\n`{service_email}`")
         return pd.DataFrame()
 
 # --- 6. 報表顯示區 ---
@@ -127,11 +102,15 @@ st.subheader("📋 業務數據報表")
 df = load_all_data()
 
 if df is not None and not df.empty:
-    # 這裡顯示資料表格
+    # 簡單統計
+    st.write(f"目前共有 {len(df)} 筆紀錄")
+    
+    # 搜尋功能
+    search = st.text_input("🔍 搜尋醫師、醫院或代表姓名")
+    if search:
+        df = df[df.apply(lambda row: row.astype(str).str.contains(search).any(), axis=1)]
+    
+    # 顯示表格
     st.dataframe(df, use_container_width=True, hide_index=True)
 else:
-    # 如果還在轉圈圈，顯示手動重整按鈕
-    if st.button("🔄 手動重新整理資料"):
-        st.cache_data.clear()
-        st.rerun()
-
+    st.info("📊 雲端資料庫目前無資料或正在讀取中...")
