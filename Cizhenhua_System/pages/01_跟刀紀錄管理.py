@@ -30,15 +30,18 @@ st.markdown("""
 @st.cache_resource(ttl=60)
 def get_ss():
     try:
+        # 取得 secrets 字典
+        creds_info = st.secrets["gcp_service_account"].to_dict()
+        
+        # 強制修正換行符號，防止 ASN.1 解析出錯
+        if "private_key" in creds_info:
+            creds_info["private_key"] = creds_info["private_key"].replace("\\n", "\n")
+            
         scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-        if "gcp_service_account" not in st.secrets:
-            st.error("❌ Secrets 中找不到 [gcp_service_account] 設定")
-            return None
-        creds_info = st.secrets["gcp_service_account"]
         creds = Credentials.from_service_account_info(creds_info, scopes=scope)
         return gspread.authorize(creds).open_by_key(SPREADSHEET_ID)
     except Exception as e:
-        st.error(f"❌ 連線失敗: {str(e)}")
+        st.error(f"❌ 連線失敗：{str(e)}")
         return None
 
 ss = get_ss()
