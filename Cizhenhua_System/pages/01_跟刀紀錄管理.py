@@ -29,41 +29,54 @@ st.markdown("""
 
 # --- 3. 數據連線邏輯 ---
 
+# --- 3. 數據連線 ---
+
 @st.cache_resource(ttl=60)
 def get_ss():
     try:
         creds_info = st.secrets["gcp_service_account"].to_dict()
         if "private_key" in creds_info:
-            # 關鍵修正：將雙斜槓轉回換行，並清除首尾空白
+            # 修正換行並去除空白，解決 InvalidPadding 問題
             creds_info["private_key"] = creds_info["private_key"].replace("\\n", "\n").strip()
             
         scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
         creds = Credentials.from_service_account_info(creds_info, scopes=scope)
         return gspread.authorize(creds).open_by_key(SPREADSHEET_ID)
     except Exception as e:
-        st.error(f"❌ 連線失敗：{str(e)}")
+        st.error(f"❌ 連線失敗: {str(e)}")
         return None
 
-# 初始化連線物件
+# 先初始化連線
 ss = get_ss()
 
-@st.cache_resource(ttl=60)
-def get_ss():
-    try:
-        creds_info = st.secrets["gcp_service_account"].to_dict()
+# 【這部分您之前漏掉了】定義如何取得選項
+@st.cache_data(ttl=600)
+def get_options():
+    # 預設選項，防止連線失敗時 OPT 變數不存在
+    default_opt = {
+        "price": ["載入失敗"], "prod": ["載入失敗"], 
+        "hosp": ["載入失敗"], "rep": ["載入失敗"]
+    }
+    
+    if ss is None:
+        return default_opt
         
-        if "private_key" in creds_info:
-            # 1. 處理轉義斜槓 2. 去除首尾不可見空格（解決 InvalidPadding 關鍵）
-            creds_info["private_key"] = creds_info["private_key"].replace("\\n", "\n").strip()
-            
-        scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-        creds = Credentials.from_service_account_info(creds_info, scopes=scope)
-        return gspread.authorize(creds).open_by_key(SPREADSHEET_ID)
+    try:
+        # 指向您的 Settings 分頁
+        ws_opt = ss.worksheet("Settings")
+        df_opt = pd.DataFrame(ws_opt.get_all_records())
+        
+        # 轉換成清單字典
+        return {
+            "price": df_opt["批價內容"].dropna().unique().tolist() if "批價內容" in df_opt.columns else ["欄位錯誤"],
+            "prod": df_opt["產品項目"].dropna().unique().tolist() if "產品項目" in df_opt.columns else ["欄位錯誤"],
+            "hosp": df_opt["使用醫院"].dropna().unique().tolist() if "使用醫院" in df_opt.columns else ["欄位錯誤"],
+            "rep": df_opt["業務代表"].dropna().unique().tolist() if "業務代表" in df_opt.columns else ["欄位錯誤"]
+        }
     except Exception as e:
-        st.error(f"❌ 連線失敗：{str(e)}")
-        return None
+        st.warning(f"⚠️ 讀取 Settings 分頁失敗: {e}")
+        return default_opt
 
-# --- 關鍵步驟：建立 OPT 字典供介面使用 ---
 OPT = get_options()
 
 # --- 4. 介面佈局 ---
