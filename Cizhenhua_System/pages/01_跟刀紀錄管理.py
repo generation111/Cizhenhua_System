@@ -34,45 +34,32 @@ st.markdown("""
 import streamlit as st
 import gspread
 from google.oauth2.service_account import Credentials
-import re
+import base64
 
 @st.cache_resource(ttl=60)
 def get_ss():
     try:
-        # 1. 抓取原始 Secrets
+        # 1. 取得基本資訊 (Secrets 裡只留這幾個，private_key 拿掉也沒關係)
         creds_info = st.secrets["gcp_service_account"].to_dict()
         
-        if "private_key" in creds_info:
-            pk = creds_info["private_key"]
-            
-            # --- 關公大刀第一砍：去除所有非金鑰字元 ---
-            # 只留下 A-Z, a-z, 0-9, +, /, = 這幾種 Base64 合法字元
-            # 所有的換行、空格、斜槓、引號，通通砍掉！
-            core = "".join(re.findall(r'[A-Za-z0-9+/=]', pk))
-            
-            # --- 關公大刀第二砍：排除標頭與結尾的干擾 ---
-            # 有些人複製時會把 BEGIN/END 也編碼進去，我們統一移除後重新手工打造
-            core = core.replace("BEGINPRIVATEKEY", "").replace("ENDPRIVATEKEY", "")
-            
-            # --- 關公大刀第三砍：強制重鑄 64 字元標準 PEM 格式 ---
-            formatted_key = "-----BEGIN PRIVATE KEY-----\n"
-            for i in range(0, len(core), 64):
-                formatted_key += core[i:i+64] + "\n"
-            formatted_key += "-----END PRIVATE KEY-----\n"
-            
-            # 塞回 Google 的驗證欄位
-            creds_info["private_key"] = formatted_key
+        # 2. 【化骨綿掌】直接把金鑰 Base64 寫死在代碼裡
+        # 請將您金鑰轉出來的那一長串「沒有換行、沒有符號」的 Base64 貼在這裡
+        PURE_B64_KEY = "XG5NSUlFdlFJQkFEQU5CZ2txaGtpRzl3MEJBUUVGQUFTQ0JLY3dnZ1NqQWdFQUFvSUJBUUMrTGNjUjVFVk5jVCtGXG5aMjBMVkViYnRDVDBsVUIwdVdBUGZQSjl2V0drWjhYS29PWFdRMFI3RGtzbmQyVGdlRUEzVTZlODFxUm9KSi9JXG5ROThKWUx0UmkwM0loaUlVSC9XWVQzTEtMc1JVeHFOV0V3VGx3QmgxVThYZFBwWTlWOWdLYVJsZDZ3T3RqYnBKXG5LNkxFenFSSWhIaTgwbzAra0dKME9MdGFIWGt5bmhLaU1PUG4ybzR5WWVhNDlyYjR4cFZVQUJ0TkNNdmhWQzI2XG5Ca0d3ZGE4SHdMY1RKVEhDdU9HdDFDeFhkVms5T2JXZGxTYktQaTlBTEt3dTdKV0o4bDNpcmdkNmpxV2M1S210XG5mN3pvNFRIaXFwZWNXYW14R01nZXFJWVhKRk51K0NHQkJNTHFMY1ByQnlvVmtILzd6ZDk4NGJ1TjRIdUp4NXJqXG45cEJsaDF0L0FnTUJBQUVDZ2dFQVhSTzBpVm9xWFBPZlBpQlhheU1OSnZ3czFoT3lIeTZYQ0IyRDVPeHFQSGVaXG5nMGxxRTRxS21wdHRSdHlWWDVNYkFya0xzRTF3MjVPSkxBK2p1a2hBaFhGaldVL2tuK3JnWFhJTTRVMHdRN21RXG5PVkZIcFZaMTRmNWxLWm8zRjhERmVKcmxrbVN5UVIvTFc0Sml3R1hPVzd1U0NBQVlwdFV0aW1vMXI2NGJJaDBKXG5NVmZKL09EZERWQjVESzJ1a20yWnYreFlEa0NNNXJIbElNcU5EOTFyWExwY0UwT3pjZE9SS2svY01BdndwM0FJXG5CY2pWaVk0Q0pXb2VTLzB6YTZJVDhzRmgyQ2plRHZ4THJLdWJiRy83UUFTMW9LRDdhQUNBRHJzREZNcnM2NlU5XG4renBhRFovd0JFTUxaRTZQdzNKQU9Ucjh5MXlBUTlCbFR2cGoxQXpTT1FLQmdRRGtKTnhqTHNSU2hMVVltaDJwXG5OUk5uaFBBRUg2TDROZUZFVGl0dk1rSWp3VVpxb21vMGN1cXlHOEVUbzJ4cWI3VUpHTmxIR3BuNDIwTW1scHlWXG5rRWpIenFubkFVNENjZHNYeWNsTjhQWnlqd3R4TXNlTmJ6Qm1OdjFTMEk4dk1sSzV4RDdrb0hNMis5WlVXTlBwXG5iQ2ZVaVZ2MDF6Uzgwb05wUFcvREFQMzJBd0tCZ1FEVlpqdDhuNDVONCt0d2Y2dk1Qc0VPbHY1WEhtTlo5Z1VNXG4rd0I0bnNzSkFPSVFvYXhyQUo5Mm9RZ0Z2NWxJN3JzZVhYbWNTZmlzUkR3VEhsQi8zR0FHcDluYVpzdEhXREZWXG4zTXBrMlFpOFQwbkUzTUI5U1VKZS9XemFHQ091aUQ1ZXBKaE5CVW9JZWFaV21iVUhmeEpEaHQwUlE1Z2ZPU0g2XG5KMUNzdXRFNTFRS0JnQXBKYXpLQnFsSjZMMXd6bnNEQlp1V1ZCZWw1cjdSM1lYZmQrbkZpRjc5YStKellRK2VuXG5ndE9URXNxYTVNbUx6ZUxpSHZIb3ppWjlaSEs1K2NkNG9QOTVYd25PY2tFRDl6Z0VYakpJZWlSQ05PYmV2a2F2XG5TOFJnR0Y0Q2oySTJaNnArb2NOWFJMcW04a3dOVVVqR0dxbW5vK0RQVDA1d1E0S2NSWXpLWDZrWEFvR0JBTFNCXG5iRElIR0t6ajdJUFZTbkZTWjZTNnJkcnRGbWJEQmhTcndBTkhka0JnWWRobG1OMU53cFRxczBtQmZ0eEZLendOXG5IMC9HOWpSbzUxUFlvWWoxMUxmc2hRY0xTa2xIM1R0ZXJraE5tT2tJUEVMcjQxcFdmSEN5OXI4b0NnNllxZ0VPXG5RdEZyZHVyaVU0UVBNaVJzSlB1L2VRRWdadTJLT3laSTJTR3lTRVlkQW9HQWZibjNqcytNUVFLbExQR3Jrb1NsXG5zemFBUXdPcDJxa2xzemRUbkFtMVZpMzJGOGVYdUZQTXhHdTdJdDVLbzU5cG5OcUJ4cFJwV2JKQm9uOGZxbTJ6XG54eU11S2RJN0VXYjBNc0JHY1Jza0FOWnZMODRtNm1FWUR4a2ttNjVUaU1tK1ZhOExWczhvT0g4N2ZiMFRyMXRNXG5HeUJpYU4wSGdLY21Nc0JxN1VwSnltUT1cbi0tLS0tRU5EIFBSSVZBVEUgS0VZLS0tLS1cbiIs"
+        
+        # 3. 解碼回原始金鑰文字
+        decoded_key = base64.b64decode(PURE_B64_KEY).decode("utf-8")
+        
+        # 4. 確保換行符號是 Google 認得的格式
+        creds_info["private_key"] = decoded_key.replace("\\n", "\n")
             
         scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-        
-        # 驗證啟動
         creds = Credentials.from_service_account_info(creds_info, scopes=scope)
+        
         return gspread.authorize(creds).open_by_key(SPREADSHEET_ID)
         
     except Exception as e:
-        st.error(f"❌ 關公大刀斬妖除魔失敗 (連線仍有誤): {str(e)}")
+        st.error(f"❌ 化骨綿掌失敗 (這妖孽太強了): {str(e)}")
         return None
-
 ss = get_ss()
 
 @st.cache_data(ttl=60)
