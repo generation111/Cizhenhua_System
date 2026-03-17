@@ -50,33 +50,21 @@ def get_ss():
 # 初始化連線物件
 ss = get_ss()
 
-@st.cache_data(ttl=600)
-def get_options():
-    """從 Settings 分頁抓取下拉清單資料"""
-    # 預設值（避免連線失敗時 OPT 未定義）
-    default_opt = {
-        "price": ["載入失敗"], "prod": ["載入失敗"], "hosp": ["載入失敗"], 
-        "rep": ["載入失敗"], "dept": ["載入失敗"], "blood": ["載入失敗"]
-    }
-    
-    if ss is None:
-        return default_opt
-        
+@st.cache_resource(ttl=60)
+def get_ss():
     try:
-        # 開啟 Settings 分頁並轉換為 DataFrame
-        ws_opt = ss.worksheet("Settings")
-        df_opt = pd.DataFrame(ws_opt.get_all_records())
+        creds_info = st.secrets["gcp_service_account"].to_dict()
         
-        # 清洗資料並建立字典
-        return {
-            "price": df_opt["批價內容"].replace('', pd.NA).dropna().unique().tolist() if "批價內容" in df_opt.columns else ["欄位錯誤"],
-            "prod": df_opt["產品項目"].replace('', pd.NA).dropna().unique().tolist() if "產品項目" in df_opt.columns else ["欄位錯誤"],
-            "hosp": df_opt["使用醫院"].replace('', pd.NA).dropna().unique().tolist() if "使用醫院" in df_opt.columns else ["欄位錯誤"],
-            "rep": df_opt["業務代表"].replace('', pd.NA).dropna().unique().tolist() if "業務代表" in df_opt.columns else ["欄位錯誤"]
-        }
+        if "private_key" in creds_info:
+            # 1. 處理轉義斜槓 2. 去除首尾不可見空格（解決 InvalidPadding 關鍵）
+            creds_info["private_key"] = creds_info["private_key"].replace("\\n", "\n").strip()
+            
+        scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+        creds = Credentials.from_service_account_info(creds_info, scopes=scope)
+        return gspread.authorize(creds).open_by_key(SPREADSHEET_ID)
     except Exception as e:
-        st.warning(f"⚠️ 設定讀取異常: {e}")
-        return default_opt
+        st.error(f"❌ 連線失敗：{str(e)}")
+        return None
 
 # --- 關鍵步驟：建立 OPT 字典供介面使用 ---
 OPT = get_options()
