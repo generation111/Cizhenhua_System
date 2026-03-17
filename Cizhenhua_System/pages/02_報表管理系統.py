@@ -37,13 +37,13 @@ st.markdown("""
     
    /* 訪談內容錄入框：高度再調降 50% 並優化視覺 */
 div[data-baseweb="textarea"] { 
-    min-height: 20px !important;  /
+    min-height: 45px !important;  /
 }
 
 div[data-baseweb="textarea"] textarea {
-    padding: 2px 4px !important;  /* 縮減內邊距，騰出空間 */
-    line-height: 12!important;   /* 調整行高，讓單行文字置中 */
-    font-size: 12px !important;
+    padding: 4px 8px !important;  /* 縮減內邊距，騰出空間 */
+    line-height: 20!important;   /* 調整行高，讓單行文字置中 */
+    font-size: 20px !important;
 }
 
     }
