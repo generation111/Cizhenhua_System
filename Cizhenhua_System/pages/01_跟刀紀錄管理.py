@@ -39,44 +39,38 @@ import re
 @st.cache_resource(ttl=60)
 def get_ss():
     try:
-        # 1. 取得 Secrets 字典
+        # 1. 抓取原始 Secrets
         creds_info = st.secrets["gcp_service_account"].to_dict()
         
         if "private_key" in creds_info:
-            raw_key = creds_info["private_key"]
+            pk = creds_info["private_key"]
             
-            # --- 核心修復：徹底重建 PEM 格式 ---
-            # 1. 移除標頭、結尾、物理斜槓 \\n、換行、空格和引號，只留核心內容
-            # 這樣可以確保那個出錯的 "=" 如果是不正常的，會被重新定位或處理
-            core_content = raw_key.replace("-----BEGIN PRIVATE KEY-----", "") \
-                                  .replace("-----END PRIVATE KEY-----", "") \
-                                  .replace("\\n", "").replace("\n", "") \
-                                  .replace("\r", "").replace('"', '') \
-                                  .replace(" ", "").strip()
+            # --- 關公大刀第一砍：去除所有非金鑰字元 ---
+            # 只留下 A-Z, a-z, 0-9, +, /, = 這幾種 Base64 合法字元
+            # 所有的換行、空格、斜槓、引號，通通砍掉！
+            core = "".join(re.findall(r'[A-Za-z0-9+/=]', pk))
             
-            # 2. 重新手工組裝：每 64 個字元換一行（這是 Google 要求的嚴格標準）
+            # --- 關公大刀第二砍：排除標頭與結尾的干擾 ---
+            # 有些人複製時會把 BEGIN/END 也編碼進去，我們統一移除後重新手工打造
+            core = core.replace("BEGINPRIVATEKEY", "").replace("ENDPRIVATEKEY", "")
+            
+            # --- 關公大刀第三砍：強制重鑄 64 字元標準 PEM 格式 ---
             formatted_key = "-----BEGIN PRIVATE KEY-----\n"
-            for i in range(0, len(core_content), 64):
-                line = core_content[i:i+64]
-                if line:
-                    formatted_key += line + "\n"
-            
-            # 確保最後接上正確的結尾
-            if not formatted_key.endswith("\n"):
-                formatted_key += "\n"
+            for i in range(0, len(core), 64):
+                formatted_key += core[i:i+64] + "\n"
             formatted_key += "-----END PRIVATE KEY-----\n"
             
-            # 3. 把修好後的金鑰塞回 creds_info 字典
+            # 塞回 Google 的驗證欄位
             creds_info["private_key"] = formatted_key
             
         scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
         
-        # 4. 驗證並連線
+        # 驗證啟動
         creds = Credentials.from_service_account_info(creds_info, scopes=scope)
         return gspread.authorize(creds).open_by_key(SPREADSHEET_ID)
         
     except Exception as e:
-        st.error(f"❌ 資料庫連線失敗: {str(e)}")
+        st.error(f"❌ 關公大刀斬妖除魔失敗 (連線仍有誤): {str(e)}")
         return None
 
 ss = get_ss()
