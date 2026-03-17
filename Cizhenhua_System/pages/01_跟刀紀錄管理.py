@@ -31,18 +31,39 @@ st.markdown("""
 
 # --- 3. 數據連線 ---
 
-import json
+import re
 
 @st.cache_resource(ttl=60)
 def get_ss():
     try:
-        # 從 Secrets 讀取那塊 JSON
-        json_raw = st.secrets["gcp_service_account"]["json_content"]
-        creds_info = json.loads(json_raw)
+        # 直接讀取 Secrets 字典
+        s = st.secrets["gcp_service_account"]
         
-        # 修復私鑰內的換行符號
-        if "private_key" in creds_info:
-            creds_info["private_key"] = creds_info["private_key"].replace("\\n", "\n")
+        # 建立一個乾淨的字典給 Google
+        creds_info = {
+            "type": s["type"],
+            "project_id": s["project_id"],
+            "private_key_id": s["private_key_id"],
+            "client_email": s["client_email"],
+            "client_id": s["client_id"],
+            "auth_uri": s["auth_uri"],
+            "token_uri": s["token_uri"],
+            "auth_provider_x509_cert_url": s["auth_provider_x509_cert_url"],
+            "client_x509_cert_url": s["client_x509_cert_url"],
+            "universe_domain": s.get("universe_domain", "googleapis.com")
+        }
+        
+        # --- 終極金鑰清洗邏輯 ---
+        raw_key = s["private_key"]
+        # 1. 移除所有隱形的控制字元 (如 ASCII 181)
+        clean_key = "".join(char for char in raw_key if ord(char) < 128)
+        # 2. 處理換行：先移除所有物理換行，再把 \n 文字轉回真正的換行符號
+        clean_key = clean_key.replace("\\n", "\n")
+        # 3. 確保結構正確
+        if "-----BEGIN PRIVATE KEY-----" not in clean_key:
+            clean_key = f"-----BEGIN PRIVATE KEY-----\n{clean_key}\n-----END PRIVATE KEY-----"
+            
+        creds_info["private_key"] = clean_key
             
         scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
         creds = Credentials.from_service_account_info(creds_info, scopes=scope)
@@ -50,7 +71,6 @@ def get_ss():
     except Exception as e:
         st.error(f"❌ 資料庫連線失敗: {str(e)}")
         return None
-
 
 ss = get_ss()
 
