@@ -36,22 +36,26 @@ import base64
 @st.cache_resource(ttl=60)
 def get_ss():
     try:
-        # 取得 secrets 並轉為字典
+        # 1. 取得原始資訊
         creds_info = st.secrets["gcp_service_account"].to_dict()
         
-        # 關鍵：解碼 Base64
+        # 2. 核心修正：解碼並重新指派給 Google 認得的 "private_key" 欄位
         if "private_key_base64" in creds_info:
             b64_str = creds_info["private_key_base64"]
-            # 解碼後去除可能的空格
-            creds_info["private_key"] = base64.b64decode(b64_str).decode("utf-8").strip()
+            # 解碼 Base64 並確保移除前後空格
+            decoded_key = base64.b64decode(b64_str).decode("utf-8").strip()
+            
+            # --- 就是這一行關鍵！ ---
+            creds_info["private_key"] = decoded_key
             
         scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+        
+        # 現在 Google 就能在 creds_info 裡找到 private_key 了
         creds = Credentials.from_service_account_info(creds_info, scopes=scope)
         return gspread.authorize(creds).open_by_key(SPREADSHEET_ID)
     except Exception as e:
         st.error(f"❌ 資料庫連線失敗: {str(e)}")
         return None
-
 ss = get_ss()
 
 @st.cache_data(ttl=60)
