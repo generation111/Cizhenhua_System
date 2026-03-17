@@ -1,3 +1,40 @@
+# --- 在程式碼最上方加入這段 ---
+import streamlit.components.v1 as components
+
+# 強制寫入 Meta Tag 鎖定縮放 (Viewport Lock)
+components.html(
+    """
+    <script>
+        var meta = document.createElement('meta');
+        meta.name = "viewport";
+        meta.content = "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0";
+        document.getElementsByTagName('head')[0].appendChild(meta);
+    </script>
+    """,
+    height=0,
+)
+
+# --- 修改樣式區塊，確保文字與按鈕不會因為縮放而跑位 ---
+st.markdown("""
+<style>
+    /* 讓整個系統容器自適應，不論縮放比例 */
+    html, body, [data-testid="stAppViewContainer"] {
+        overflow-x: hidden !important;
+        width: 100vw !important;
+    }
+    
+    .block-container { 
+        padding-top: 2rem !important; 
+        max-width: 100% !important; 
+    }
+
+    /* 針對頂部主選單按鈕的優化 */
+    div.stButton > button {
+        white-space: nowrap; /* 確保按鈕文字不換行 */
+        font-size: 14px !important; /* 固定字體大小，不隨系統縮放混亂 */
+    }
+</style>
+""", unsafe_allow_html=True)
 import streamlit as st
 import pandas as pd
 import gspread
