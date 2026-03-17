@@ -28,17 +28,15 @@ st.markdown("""
 def get_ss():
     try:
         creds_info = st.secrets["gcp_service_account"].to_dict()
-       if "private_key" in creds_info:
-    # 這裡的 strip() 會移除掉所有溢出的隱形字元
-    fixed_key = creds_info["private_key"].replace("\\n", "\n").strip()
-    creds_info["private_key"] = fixed_key
+        if "private_key" in creds_info:
+            # 1. 處理可能的轉義斜槓 2. 去除所有首尾空白 (修復 InvalidByte 關鍵)
+            creds_info["private_key"] = creds_info["private_key"].replace("\\n", "\n").strip()
             
         scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
         creds = Credentials.from_service_account_info(creds_info, scopes=scope)
         return gspread.authorize(creds).open_by_key(SPREADSHEET_ID)
     except Exception as e:
-        # 如果連線失敗，直接顯示完整錯誤，不隱藏
-        st.error(f"❌ 連線失敗: {str(e)}")
+        st.error(f"❌ 連線失敗：{str(e)}")
         return None
 ss = get_ss()
 
