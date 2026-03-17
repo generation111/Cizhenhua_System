@@ -1,5 +1,5 @@
-# --- 在程式碼最上方加入這段 ---
-import streamlit.components.v1 as components
+import streamlit as st
+import streamlit.components.v1 as components  # <---
 
 # 強制寫入 Meta Tag 鎖定縮放 (Viewport Lock)
 components.html(
