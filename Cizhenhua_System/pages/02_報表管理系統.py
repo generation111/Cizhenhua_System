@@ -4,69 +4,48 @@ import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime, timedelta, timezone
 import streamlit.components.v1 as components
-import time
 
 # --- 1. 核心設定 ---
 tw_tz = timezone(timedelta(hours=8))
 SYS_TITLE = "慈榛驊業務管理系統（全功能終極修復版）"
 
 st.set_page_config(
-    page_title=f"{SYS_TITLE}", 
+    page_title=SYS_TITLE, 
     layout="centered", 
     initial_sidebar_state="collapsed" 
 )
 
-# --- 2. UI 樣式優化 (標題貼頂、文字黑化、輸入框高度調降) ---
+# --- 2. UI 樣式優化 (恢復 Streamlit 功能區) ---
 st.markdown("""
 <style>
-    /* 移除頂部空白 */
-    .block-container { padding-top: 2.5rem !important; max-width: 900px !important; }
-    [data-testid="stHeader"] { visibility: hidden; height: 10px; }
+    /* 標題極致貼頂 */
+    .block-container { padding-top: 0.5rem !important; max-width: 950px !important; }
+    [data-testid="stHeader"] { visibility: visible !important; height: auto !important; }
     
-    /* 強制文字顏色 */
+    /* 強制文字黑色 */
     .stApp { background-color: #F8FAFC; color: #000000; }
-    label, p, span, div, .stSelectbox, .stTextInput, .stTextArea { color: #000000 !important; }
+    label, p, span, div, .stSelectbox, .stTextInput, .stTextArea { color: #000000 !important; font-weight: 500; }
 
-    /* 系統標題貼頂 */
     .sys-title { 
-        text-align: center; font-size: 24px !important; font-weight: 850; 
-        color: #1E3A8A !important; margin-top: -60px !important; margin-bottom: 15px; 
+        text-align: center; font-size: 24px !important; font-weight: 900; 
+        color: #1E3A8A !important; margin-top: -15px !important; margin-bottom: 20px; 
     }
     
-    /* 區塊標題 */
+    /* 區塊標籤樣式 */
     .item-l { color: white !important; padding: 10px 15px; border-radius: 8px; font-weight: 700; margin: 15px 0 10px 0; font-size: 14px; }
     .title-p { background: linear-gradient(90deg, #64748B, #94A3B8); }
     .title-c { background: linear-gradient(90deg, #475569, #64748B); }
     .title-n { background: linear-gradient(90deg, #1E293B, #334155); }
     
-    /* 重要修正：調降訪談內容輸入框高度 (降低 65%) */
-    div[data-baseweb="textarea"] { 
-        min-height: 52px !important; /* 原本約 150px，調降後符合 65% 降幅 */
-    }
+    /* 訪談內容錄入框高度降低 65% (精準縮減) */
+    div[data-baseweb="textarea"] { min-height: 60px !important; }
     
-    /* 按鈕樣式 */
+    /* 按鈕優化 */
     .stButton>button { height: 42px !important; border-radius: 8px !important; font-weight: 700 !important; }
-    footer {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. 全域手勢支援 ---
-components.html("""
-<script>
-    const doc = window.parent.document;
-    let startX = 0;
-    doc.addEventListener('touchstart', (e) => startX = e.touches[0].clientX);
-    doc.addEventListener('touchend', (e) => {
-        const diffX = e.changedTouches[0].clientX - startX;
-        const tabs = doc.querySelectorAll('button[data-baseweb="tab"]');
-        let activeIdx = Array.from(tabs).findIndex(t => t.getAttribute('aria-selected') === 'true');
-        if (diffX > 70 && activeIdx > 0) tabs[activeIdx - 1].click();
-        else if (diffX < -70 && activeIdx < tabs.length - 1) tabs[activeIdx + 1].click();
-    });
-</script>
-""", height=0)
-
-# --- 4. 數據連線 ---
+# --- 3. 數據連線 ---
 @st.cache_resource(ttl=60)
 def get_ss():
     try:
@@ -84,12 +63,12 @@ def get_settings():
         ws = ss.worksheet("Settings").get_all_values()
         df = pd.DataFrame(ws[1:], columns=ws[0])
         def cln(c): return [str(x).strip() for x in df[c].unique() if x and str(x).strip() != "請選擇"]
-        return {"times": cln("時段") or d["times"], "reps": cln("代表") or d["reps"], "hosps": cln("醫院"), "depts": cln("科別")}
+        return {"times": cln("時段"), "reps": cln("代表"), "hosps": cln("醫院"), "depts": cln("科別")}
     except: return d
 
 settings = get_settings()
 
-# --- 5. 行銷指引資料庫 (完全還原) ---
+# --- 4. 完整的行銷資料庫 ---
 MARKETING_DB = {
     "Mocolax": {
         "full_name": "Mocolax 行銷指引 (Phenprobamate 400mg)",
@@ -163,7 +142,7 @@ MARKETING_DB = {
     }
 }
 
-# --- 6. 頁面佈局 ---
+# --- 5. 頁面邏輯 ---
 st.markdown(f'<div class="sys-title">📊 {SYS_TITLE}</div>', unsafe_allow_html=True)
 tab1, tab2, tab3 = st.tabs(["📝 業務錄入", "🔍 審閱管理", "📜 歷史報表"])
 
@@ -206,14 +185,47 @@ with tab1:
                 st.success(data["manager"])
 
     st.markdown('<div class="item-l title-n">✍️ 3. 訪談內容錄入</div>', unsafe_allow_html=True)
-    # 實際輸入框
-    f_note = st.text_area("內容錄入", key=f"n_{rk}", label_visibility="collapsed")
+    f_note = st.text_area("內容", key=f"n_{rk}", label_visibility="collapsed")
     
-    if st.button("🚀 提交同步記錄", type="primary", use_container_width=True):
+    b1, b2 = st.columns([4, 1])
+    if b1.button("🚀 提交同步記錄", type="primary", use_container_width=True):
         if f_note and ss:
             ws = ss.worksheet("表單回應 1")
             row = [datetime.now(tw_tz).strftime("%Y-%m-%d %H:%M:%S"), str(d_date), d_time, d_rep, d_hosp, d_dept, d_dr, st.session_state.cp, "待審閱", "", f_note]
             ws.insert_row(row, 2, value_input_option='USER_ENTERED')
-            st.cache_data.clear(); st.toast("✅ 提交成功"); st.session_state.rk += 1; st.session_state.cp = None; st.rerun()
+            st.cache_data.clear(); st.toast("✅ 提交完成"); st.session_state.rk += 1; st.session_state.cp = None; st.rerun()
+    
+    if b2.button("🧹 清空", use_container_width=True):
+        st.session_state.rk += 1; st.session_state.cp = None; st.rerun()
 
-# (後續 Tab 2 & Tab 3 邏輯保持不變...)
+with tab2:
+    st.markdown("### 🔍 待辦審閱清單")
+    if ss:
+        ws = ss.worksheet("表單回應 1")
+        df_all = pd.DataFrame(ws.get_all_values()[1:], columns=ws.get_all_values()[0])
+        df_pending = df_all[df_all["審閱狀態"] == "待審閱"]
+        if not df_pending.empty:
+            for idx, row in df_pending.iterrows():
+                with st.expander(f"📌 {row['日期']} - {row['醫院']} ({row['醫師姓名']})"):
+                    st.write(f"**內容：** {row['訪談內容']}")
+                    comment = st.text_input("主管批註", key=f"com_{idx}")
+                    c1, c2 = st.columns(2)
+                    if c1.button("✅ 核准", key=f"ok_{idx}"):
+                        actual_idx = idx + 2
+                        ws.update_cell(actual_idx, 9, "已核准")
+                        ws.update_cell(actual_idx, 10, comment)
+                        st.cache_data.clear(); st.rerun()
+                    if c2.button("❌ 退回", key=f"no_{idx}"):
+                        ws.update_cell(idx+2, 9, "需修正")
+                        st.cache_data.clear(); st.rerun()
+        else:
+            st.info("目前沒有待審閱的資料。")
+
+with tab3:
+    st.markdown("### 📜 歷史報表查詢")
+    if ss:
+        ws = ss.worksheet("表單回應 1")
+        df_rep = pd.DataFrame(ws.get_all_values()[1:], columns=ws.get_all_values()[0])
+        st.dataframe(df_rep, use_container_width=True)
+        if st.button("🔄 刷新資料"):
+            st.cache_data.clear(); st.rerun()
