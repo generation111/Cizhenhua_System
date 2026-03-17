@@ -75,35 +75,36 @@ st.markdown(f'<div class="sys-title">📊 {SYS_TITLE}</div>', unsafe_allow_html=
 @st.cache_data(ttl=60)
 def load_all_data():
     try:
-        # 直接從 secrets 取得字典
-        # 確保您的 secrets 結構是 [gcp_service_account] 下方包含 type, project_id 等
-        creds_info = st.secrets["gcp_service_account"]
+        # 1. 從 Secrets 獲取憑證字典
+        info = st.secrets["gcp_service_account"]
         
-        # 定義權限範圍
+        # 2. 定義完整的權限範圍
         scopes = [
             "https://www.googleapis.com/auth/spreadsheets",
             "https://www.googleapis.com/auth/drive"
         ]
         
-        # 建立憑證物件
-        creds = Credentials.from_service_account_info(creds_info, scopes=scopes)
+        # 3. 建立憑證 (這是關鍵修復點：確保憑證物件完全建立)
+        creds = Credentials.from_service_account_info(info, scopes=scopes)
         
-        # 授權連線
-        client = gspread.authorize(creds)
+        # 4. 使用 gspread.authorize 並明確指定憑證
+        gc = gspread.authorize(creds)
         
-        # 開啟試算表 (請確認名稱與雲端檔案一致)
-        # 如果還是失敗，建議改用 .open_by_key("您的試算表ID")
-        sh = client.open("慈榛驊業務管理系統") 
+        # 5. 開啟試算表 (佰哥，請再次確認您的試算表名稱是否為「慈榛驊業務管理系統」)
+        # 如果還是不行，請換成 .open_by_key("您的試算表ID")
+        sh = gc.open("慈榛驊業務管理系統")
         ws = sh.worksheet("回應試算表")
         
-        data = ws.get_all_values()
-        if len(data) > 1:
-            # 將第一行作為標頭，其餘作為資料
-            return pd.DataFrame(data[1:], columns=data[0])
-        return pd.DataFrame()
+        # 6. 讀取並轉為 DataFrame
+        rows = ws.get_all_values()
+        if not rows:
+            return pd.DataFrame()
+        
+        return pd.DataFrame(rows[1:], columns=rows[0])
+
     except Exception as e:
-        # 顯示更詳細的錯誤資訊供偵錯
-        st.error(f"連線失敗，請檢查權限或名稱: {e}")
+        # 如果失敗，顯示精確的錯誤類型
+        st.error(f"❌ 連線異常: {type(e).__name__} - {str(e)}")
         return pd.DataFrame()
 
 # --- 6. 報表顯示區 ---
