@@ -92,17 +92,18 @@ with tab1:
     c10, c11, c12 = st.columns(3); d_dept = c10.selectbox("使用科別", OPT.get("dept"), key=f"dp_{rk}"); d_qty = c11.number_input("數量", min_value=1, value=1, key=f"qt_{rk}"); d_opname = c12.text_input("手術名稱/部位", key=f"op_{rk}")
     c13, c14, c15 = st.columns(3); d_loc = c13.selectbox("使用地點", OPT.get("loc"), key=f"lc_{rk}"); d_blood = c14.selectbox("抽血人員", OPT.get("blood"), key=f"bl_{rk}"); d_rep = c15.selectbox("跟刀(人員)", OPT.get("rep"), key=f"rp_{rk}")
 
-    bc1, bc2, bc3 = st.columns([0.3, 3.2, 1])
-    with bc1: st.markdown('<p style="font-weight:bold; margin-top:8px;">備註</p>', unsafe_allow_html=True)
-   # 假設這是在一個 loop 或 if 裡面，請確保 d_memo 與上方的代碼對齊
+        bc1, bc2, bc3 = st.columns([0.3, 3.2, 1])
+    with bc1: 
+        st.markdown('<p style="font-weight:bold; margin-top:8px;">備註</p>', unsafe_allow_html=True)
+    
     with bc2: 
-            d_memo = st.text_area(
-                "備註", 
-                key=f"me_{rk}", 
-                height=40, 
-                placeholder="請輸入備註...", 
-                label_visibility="collapsed"
-            )
+        d_memo = st.text_area(
+            "備註", 
+            key=f"me_{rk}", 
+            height=40, 
+            placeholder="請輸入備註...", 
+            label_visibility="collapsed"
+        )
 
     with bc3:
         if st.button("🚀 提交數據", key="submit_btn"):
