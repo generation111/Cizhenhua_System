@@ -19,7 +19,7 @@ st.set_page_config(
 # --- 2. 側邊欄與 UI 樣式優化 ---
 st.markdown("""
 <style>
-    .block-container { padding-top: 4.5rem !important; }
+    .block-container { padding-top: 2.5rem !important; }
     [data-testid="stSidebarNav"] span { font-size: 22px !important; font-weight: bold !important; }
     [data-testid="column"] { display: flex; align-items: flex-end; }
     .stApp { background-color: #F8FAFC; }
