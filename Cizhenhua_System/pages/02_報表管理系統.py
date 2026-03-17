@@ -30,7 +30,7 @@ st.markdown("""
 
     /* 頁面內容寬度與貼頂設定 */
     .block-container { 
-        padding-top: 0.5rem !important; 
+        padding-top: 2.5rem !important; 
         max-width: 1300px !important; 
         margin: 0 auto !important; 
     }
