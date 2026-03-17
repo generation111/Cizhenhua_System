@@ -81,22 +81,39 @@ def load_all_data():
         creds = Credentials.from_service_account_info(info, scopes=scopes)
         gc = gspread.authorize(creds)
         
-        # 2. 【佰哥關鍵修改區】
-        # 直接貼上您試算表的完整網址，最不容易出錯
-        SHEET_URL = "https://docs.google.com/spreadsheets/d/1w2BDsPHHxgaz6PJhoPLXdh0UQJplA6rr42wLoLQIM9s/edit?gid=1982907342#gid=1982907342" 
+        # 2. 試算表網址 (已根據您的輸入校對)
+        SHEET_URL = "https://docs.google.com/spreadsheets/d/1w2BDsPHHxgaz6PJhoPLXdh0UQJplA6rr42wLoLQIM9s/edit"
         
-        # 使用網址開啟 (open_by_url)
+        # 使用網址開啟
         sh = gc.open_by_url(SHEET_URL)
         
-        # 檢查工作表名稱是否真的叫「回應試算表」，如果不確定，可以改用索引開啟
-        # ws = sh.worksheet("回應試算表") # 按名稱找
-        ws = sh.get_worksheet(0)       # 暴力法：直接開第一個分頁（索引0）
+        # 3. 指定分頁：根據您的網址 gid=1982907342，嘗試精確開啟
+        # 我們先嘗試用名稱「回應試算表」，若失敗則嘗試該 gid 對應的分頁
+        try:
+            ws = sh.worksheet("回應試算表")
+        except:
+            # 如果名稱不對，改用暴力搜尋法找符合該 gid 的分頁
+            ws = None
+            for sheet in sh.worksheets():
+                if str(sheet.id) == "1982907342":
+                    ws = sheet
+                    break
+            if ws is None:
+                ws = sh.get_worksheet(0) # 最終保險：開第一個
         
         rows = ws.get_all_values()
         if not rows:
             return pd.DataFrame()
             
         return pd.DataFrame(rows[1:], columns=rows[0])
+
+    except Exception as e:
+        # 這裡是解決 404 的終極提示
+        st.error(f"❌ 讀取失敗：{str(e)}")
+        # 顯示需要共用的 Email，方便佰哥直接複製
+        service_email = st.secrets["gcp_service_account"]["client_email"]
+        st.info(f"💡 請檢查：是否已將此試算表『共用』給以下 Email：\n\n`{service_email}`")
+        return pd.DataFrame()
 
     except Exception as e:
         # 顯示更精確的錯誤訊息
