@@ -19,7 +19,7 @@ st.set_page_config(
 st.markdown("""
 <style>
     /* 標題極致貼頂 */
-    .block-container { padding-top: 0.5rem !important; max-width: 950px !important; }
+    .block-container { padding-top: 2.5rem !important; max-width: 950px !important; }
     [data-testid="stHeader"] { visibility: visible !important; height: auto !important; }
     
     /* 強制文字黑色 */
