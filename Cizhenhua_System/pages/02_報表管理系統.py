@@ -38,7 +38,7 @@ st.markdown("""
     .title-n { background: linear-gradient(90deg, #1E293B, #334155); }
     
     /* 訪談內容錄入框高度降低 65% (精準縮減) */
-    div[data-baseweb="textarea"] { min-height: 60px !important; }
+    div[data-baseweb="textarea"] { min-height: 30px !important; }
     
     /* 按鈕優化 */
     .stButton>button { height: 42px !important; border-radius: 8px !important; font-weight: 700 !important; }
