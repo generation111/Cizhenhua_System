@@ -75,27 +75,19 @@ st.markdown(f'<div class="sys-title">📊 {SYS_TITLE}</div>', unsafe_allow_html=
 @st.cache_data(ttl=60)
 def load_all_data():
     try:
-        # 1. 從 Secrets 獲取憑證字典
+        # 1. 取得金鑰
         info = st.secrets["gcp_service_account"]
-        
-        # 2. 定義完整的權限範圍
-        scopes = [
-            "https://www.googleapis.com/auth/spreadsheets",
-            "https://www.googleapis.com/auth/drive"
-        ]
-        
-        # 3. 建立憑證 (這是關鍵修復點：確保憑證物件完全建立)
+        scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
         creds = Credentials.from_service_account_info(info, scopes=scopes)
-        
-        # 4. 使用 gspread.authorize 並明確指定憑證
         gc = gspread.authorize(creds)
         
-        # 5. 開啟試算表 (佰哥，請再次確認您的試算表名稱是否為「慈榛驊業務管理系統」)
-        # 如果還是不行，請換成 .open_by_key("您的試算表ID")
-        sh = gc.open("慈榛驊業務管理系統")
+        # 2. 【佰哥關鍵動作】：請將下方引號內文字換成您試算表網址中的那串 ID
+        # 網址長這樣：https://docs.google.com/spreadsheets/d/【這串就是ID】/edit
+        SPREADSHEET_ID = "1B_pS9y6-v_CqMv6lO6U5oB3hS3O0_X4q8j-S9v6M123" # <--- 請換成您的 ID
+        
+        sh = gc.open_by_key(SPREADSHEET_ID)
         ws = sh.worksheet("回應試算表")
         
-        # 6. 讀取並轉為 DataFrame
         rows = ws.get_all_values()
         if not rows:
             return pd.DataFrame()
@@ -103,8 +95,8 @@ def load_all_data():
         return pd.DataFrame(rows[1:], columns=rows[0])
 
     except Exception as e:
-        # 如果失敗，顯示精確的錯誤類型
-        st.error(f"❌ 連線異常: {type(e).__name__} - {str(e)}")
+        # 這樣能看到到底是哪裡出問題
+        st.error(f"❌ 連線異常: {str(e)}")
         return pd.DataFrame()
 
 # --- 6. 報表顯示區 ---
