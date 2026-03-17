@@ -72,9 +72,9 @@ OPT = get_options()
 
 # 3. 在 selectbox 調用時，請這樣寫（確保 OPT 是字典後才能用 .get()）
 if isinstance(OPT, dict):
-    d_price = c4.selectbox("批價內容", OPT.get("price", ["載入中"]), key="price_key")
-else:
-    st.error("資料格式讀取錯誤")
+        d_price = c4.selectbox("批價內容", OPT.get("price", ["載入中"]), key="price_key")
+    else:
+        st.error("系統無法載入設定清單，請檢查連線")
 OPT = get_options()
 
 # --- 4. 介面佈局 ---
