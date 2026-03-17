@@ -7,104 +7,74 @@ import time
 
 # --- 1. 核心設定 ---
 tw_tz = timezone(timedelta(hours=8))
-SYS_TITLE = "2026 年度跟刀紀錄管理系統"
+SYS_TITLE = "慈榛驊業務管理系統（全功能終極修復版）"
 SPREADSHEET_ID = "1w2BDsPHHxgaz6PJhoPLXdh0UQJplA6rr42wLoLQIM9s"
 
 st.set_page_config(page_title=f"{SYS_TITLE}", layout="wide", initial_sidebar_state="collapsed")
 
-# --- 2. 樣式優化 (標題縮緊 + 移除分隔線 + 單列對齊) ---
+# --- 2. 樣式優化 (標題貼頂 + 單列對齊) ---
 st.markdown("""
 <style>
-    /* 1. 標題區塊上下空白極致縮減 */
-    .block-container { 
-        padding-top: 3em !important; 
-        padding-bottom: 0rem !important; 
-    }
+    .block-container { padding-top: 1.5rem !important; padding-bottom: 0rem !important; }
     .sys-title { 
-        text-align: center; 
-        font-size: 26px !important; 
-        font-weight: 850; 
-        color: #1E3A8A; 
-        margin-top: -10px !important;
-        margin-bottom: 15px !important;
+        text-align: center; font-size: 26px !important; font-weight: 850; 
+        color: #1E3A8A; margin-top: -10px !important; margin-bottom: 15px !important;
     }
-
-    /* 2. 移除所有分隔線與多餘外距 */
     hr { display: none !important; }
-    .stTabs [data-baseweb="tab-list"] { margin-bottom: 10px !important; }
-    
-    /* 3. 底欄單列對齊設定 */
-    /* 讓 column 內的物件垂直置中 */
-    div[data-testid="column"] {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    
-    /* 隱藏備註輸入框的預設 Label */
+    div[data-testid="column"] { display: flex; align-items: center; justify-content: center; }
     div[data-testid="stTextArea"] label { display: none !important; }
-    
-    /* 強制輸入框高度與按鈕一致 (40px) */
-    div[data-testid="stTextArea"] textarea {
-        height: 40px !important;
-        min-height: 40px !important;
-        padding: 8px !important;
-        border-radius: 5px !important;
-    }
-
-    /* 按鈕樣式 (40px) */
-    div.stButton > button {
-        height: 40px !important;
-        width: 100% !important;
-        font-size: 16px !important;
-        font-weight: bold !important;
-        border: 2px solid #1E3A8A !important;
-        color: #1E3A8A !important;
-        background-color: #FFF !important;
-        border-radius: 5px !important;
-        transition: 0.3s;
-    }
-    
+    div[data-testid="stTextArea"] textarea { height: 40px !important; min-height: 40px !important; padding: 8px !important; }
+    div.stButton > button { height: 40px !important; width: 100% !important; font-weight: bold !important; border: 2px solid #1E3A8A !important; }
     footer {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
 # --- 3. 數據連線 ---
+
 @st.cache_resource(ttl=60)
 def get_ss():
+    """建立連線並自動處理 Secrets 解析錯誤"""
     try:
         scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-        creds_info = st.secrets["gcp_service_account"]
+        # 將 secrets 轉為 dict 並強制修復 private_key 的格式
+        creds_info = st.secrets["gcp_service_account"].to_dict()
+        if "private_key" in creds_info:
+            # 關鍵修正：解決 InvalidByte 與 InvalidPadding 問題
+            creds_info["private_key"] = creds_info["private_key"].replace("\\n", "\n").strip()
+            
         creds = Credentials.from_service_account_info(creds_info, scopes=scope)
         return gspread.authorize(creds).open_by_key(SPREADSHEET_ID)
-    except: return None
+    except Exception as e:
+        st.error(f"❌ 資料庫連線失敗: {str(e)}")
+        return None
 
 ss = get_ss()
 
-@st.cache_data(ttl=10)
+@st.cache_data(ttl=60)
 def get_options():
-    """從 Settings 工作表抓取所有選單"""
-    if not ss: return {}, []
+    """抓取選單，若連線失敗則提供預設值防止當機"""
+    default_opt = {
+        "price": ["載入失敗"], "hosp": ["載入失敗"], "dept": ["載入失敗"],
+        "prod": ["載入失敗"], "loc": ["血管攝影室", "開刀房"], "blood": ["載入失敗"], "rep": ["載入失敗"]
+    }
+    if not ss: return default_opt
     try:
         ws = ss.worksheet("Settings")
         data = ws.get_all_values()
         df = pd.DataFrame(data[1:], columns=[str(h).strip() for h in data[0]])
         
-        # 動態對應
-        opts = {
-            "price": [x for x in df["批價內容"].dropna().unique() if x],
-            "hosp": [x for x in df["使用醫院"].dropna().unique() if x],
-            "dept": [x for x in df["使用科別"].dropna().unique() if x],
-            "prod": [x for x in df["產品項目"].dropna().unique() if x],
-            "loc": [x for x in df["使用地點"].dropna().unique() if x],
-            "blood": [x for x in df["抽血人員"].dropna().unique() if x],
-            "rep": [x for x in df["跟刀(操作)人員"].dropna().unique() if x]
+        return {
+            "price": [x for x in df["批價內容"].dropna().unique() if x] if "批價內容" in df.columns else ["欄位遺失"],
+            "hosp": [x for x in df["使用醫院"].dropna().unique() if x] if "使用醫院" in df.columns else ["欄位遺失"],
+            "dept": [x for x in df["使用科別"].dropna().unique() if x] if "使用科別" in df.columns else ["欄位遺失"],
+            "prod": [x for x in df["產品項目"].dropna().unique() if x] if "產品項目" in df.columns else ["欄位遺失"],
+            "loc": [x for x in df["使用地點"].dropna().unique() if x] if "使用地點" in df.columns else ["血管攝影室", "開刀房"],
+            "blood": [x for x in df["抽血人員"].dropna().unique() if x] if "抽血人員" in df.columns else ["欄位遺失"],
+            "rep": [x for x in df["跟刀(操作)人員"].dropna().unique() if x] if "跟刀(操作)人員" in df.columns else ["欄位遺失"]
         }
-        return opts
-    except:
-        return {}, []
+    except Exception:
+        return default_opt
 
-# 讀取選單
 OPT = get_options()
 
 # --- 4. 介面佈局 ---
@@ -115,70 +85,25 @@ with tab1:
     if "rk_v11" not in st.session_state: st.session_state.rk_v11 = 0
     rk = st.session_state.rk_v11
     
-    # 第一排
-    c1, c2, c3 = st.columns(3)
-    d_date = c1.date_input("使用日期", value=datetime.now(tw_tz).date(), key=f"d_{rk}")
-    d_dr = c2.text_input("醫師姓名", key=f"dr_{rk}")
-    d_content = c3.text_input("使用產品內容-含預購", key=f"cn_{rk}")
-    
-    # 第二排
-    c4, c5, c6 = st.columns(3)
-    d_price = c4.selectbox("批價內容", OPT.get("price", ["載入中"]), key=f"pr_{rk}")
-    d_prod = c5.selectbox("產品項目", OPT.get("prod", ["載入中"]), key=f"pd_{rk}")
-    d_pname = c6.text_input("病人名", key=f"pn_{rk}")
-    
-    # 第三排
-    c7, c8, c9 = st.columns(3)
-    d_hosp = c7.selectbox("使用醫院", OPT.get("hosp", ["載入中"]), key=f"hs_{rk}")
-    d_spec = c8.text_input("規格", key=f"sp_{rk}")
-    d_pid = c9.text_input("病例號/ID", key=f"pi_{rk}")
-    
-    # 第四排
-    c10, c11, c12 = st.columns(3)
-    d_dept = c10.selectbox("使用科別", OPT.get("dept", ["載入中"]), key=f"dp_{rk}")
-    d_qty = c11.number_input("數量", min_value=1, value=1, key=f"qt_{rk}")
-    d_opname = c12.text_input("手術名稱/使用部位", key=f"op_{rk}")
-    
-    # 第五排
-    c13, c14, c15 = st.columns(3)
-    d_loc = c13.selectbox("使用地點", OPT.get("loc", ["血管攝影室", "開刀房"]), key=f"lc_{rk}")
-    d_blood = c14.selectbox("抽血人員", OPT.get("blood", ["載入中"]), key=f"bl_{rk}")
-    d_rep = c15.selectbox("跟刀(操作)人員", OPT.get("rep", ["載入中"]), key=f"rp_{rk}")
+    # 資料輸入區
+    c1, c2, c3 = st.columns(3); d_date = c1.date_input("使用日期", value=datetime.now(tw_tz).date(), key=f"d_{rk}"); d_dr = c2.text_input("醫師姓名", key=f"dr_{rk}"); d_content = c3.text_input("產品內容(含預購)", key=f"cn_{rk}")
+    c4, c5, c6 = st.columns(3); d_price = c4.selectbox("批價內容", OPT.get("price"), key=f"pr_{rk}"); d_prod = c5.selectbox("產品項目", OPT.get("prod"), key=f"pd_{rk}"); d_pname = c6.text_input("病人名", key=f"pn_{rk}")
+    c7, c8, c9 = st.columns(3); d_hosp = c7.selectbox("使用醫院", OPT.get("hosp"), key=f"hs_{rk}"); d_spec = c8.text_input("規格", key=f"sp_{rk}"); d_pid = c9.text_input("病例號/ID", key=f"pi_{rk}")
+    c10, c11, c12 = st.columns(3); d_dept = c10.selectbox("使用科別", OPT.get("dept"), key=f"dp_{rk}"); d_qty = c11.number_input("數量", min_value=1, value=1, key=f"qt_{rk}"); d_opname = c12.text_input("手術名稱/部位", key=f"op_{rk}")
+    c13, c14, c15 = st.columns(3); d_loc = c13.selectbox("使用地點", OPT.get("loc"), key=f"lc_{rk}"); d_blood = c14.selectbox("抽血人員", OPT.get("blood"), key=f"bl_{rk}"); d_rep = c15.selectbox("跟刀(人員)", OPT.get("rep"), key=f"rp_{rk}")
 
-    # --- 關鍵修正：底欄單列無分隔線 ---
-    # 分配比例：標籤(0.3), 輸入框(3.2), 按鈕(1)
     bc1, bc2, bc3 = st.columns([0.3, 3.2, 1])
-    
-    with bc1:
-        st.markdown('<p style="font-weight:bold; margin-bottom:0px;">備註</p>', unsafe_allow_html=True)
-    
-    with bc2:
-        d_memo = st.text_area("", key=f"me_{rk}", height=40, placeholder="請輸入備註...")
-        
+    with bc1: st.markdown('<p style="font-weight:bold; margin-top:8px;">備註</p>', unsafe_allow_html=True)
+    with bc2: d_memo = st.text_area("", key=f"me_{rk}", height=40, placeholder="請輸入備註...")
     with bc3:
-       if st.button("🚀 提交數據", key="submit_btn"):
-            with st.spinner("存檔中..."):
+        if st.button("🚀 提交數據", key="submit_btn"):
+            if ss:
                 try:
                     ws_res = ss.worksheet("回應試算表")
-                    row = [
-                        str(d_date), d_price, d_hosp, d_dept, d_dr, d_prod, 
-                        d_spec, d_qty, d_content, d_pname, d_pid, 
-                        d_opname, d_loc, d_blood, d_rep, d_memo
-                    ]
+                    row = [str(d_date), d_price, d_hosp, d_dept, d_dr, d_prod, d_spec, d_qty, d_content, d_pname, d_pid, d_opname, d_loc, d_blood, d_rep, d_memo]
                     ws_res.append_row(row, value_input_option='USER_ENTERED')
-                    
-                    # 成功後的處理
-                    st.cache_data.clear()
-                    st.toast("✅ 資料已成功存檔")
-                    time.sleep(1)
-                    st.session_state.rk_final += 1
+                    st.toast("✅ 資料已成功存檔"); time.sleep(1)
+                    st.session_state.rk_v11 += 1
                     st.rerun()
-                    
-                except gspread.exceptions.APIError as e:
-                    # 捕捉 API 錯誤 (例如 Quota exceeded)
-                    st.error(f"❌ 試算表 API 錯誤: {e.response.json().get('error', {}).get('message', '未知 API 錯誤')}")
-                except gspread.exceptions.WorksheetNotFound:
-                    st.error("❌ 找不到工作表「回應試算表」，請檢查試算表名稱設定。")
-                except Exception as e:
-                    # 捕捉其餘所有錯誤 (例如網路斷線、認證過期)
-                    st.error(f"❌ 系統發生異常，寫入失敗。原因：{str(e)}")
+                except Exception as e: st.error(f"寫入失敗: {str(e)}")
+            else: st.error("連線未建立，無法存檔。")
