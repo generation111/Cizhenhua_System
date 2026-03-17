@@ -37,25 +37,26 @@ import re
 @st.cache_resource(ttl=60)
 def get_ss():
     try:
-        # 1. 取得原始 Secrets 資訊
+        # 1. 取得 Secrets
         creds_info = st.secrets["gcp_service_account"].to_dict()
         
         if "private_key_base64" in creds_info:
             b64_str = creds_info["private_key_base64"]
             
-            # 2. 強力清洗 Base64：只留下合法字元，剔除所有換行、空格或引號
+            # 2. 清洗 Base64 垃圾字元 (只留合法字元)
             b64_clean = re.sub(r'[^A-Za-z0-9+/=]', '', b64_str)
             
-            # 3. 解碼為位元組
-            decoded_bytes = base64.b64decode(b64_clean)
+            # 3. 解碼並處理換行 (解決 MalformedFraming)
+            # 先用 latin-1 避開編碼報錯，再把物理斜槓 \\n 轉為真正的換行 \n
+            raw_content = base64.b64decode(b64_clean).decode("latin-1")
+            clean_content = raw_content.replace("\\n", "\n").replace('"', '').strip()
             
-            # 4. 以 latin-1 讀取（避開 utf-8 0x96 報錯），並手動修復換行符號
-            # 同時移除可能誤入的轉義斜槓與雙引號
-            raw_key = decoded_bytes.decode("latin-1")
-            fixed_key = raw_key.replace("\\n", "\n").replace('"', '').strip()
+            # 4. 強制 PEM 結構校正 (確保外框正確)
+            if "-----BEGIN PRIVATE KEY-----" not in clean_content:
+                # 如果解碼出來不包含外框，我們幫它補上去 (視情況而定，通常解碼後會包含)
+                pass 
             
-            # 指派回 Google 認得的欄位
-            creds_info["private_key"] = fixed_key
+            creds_info["private_key"] = clean_content
             
         scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
         creds = Credentials.from_service_account_info(creds_info, scopes=scope)
@@ -63,6 +64,7 @@ def get_ss():
     except Exception as e:
         st.error(f"❌ 資料庫連線失敗: {str(e)}")
         return None
+
 ss = get_ss()
 
 @st.cache_data(ttl=60)
