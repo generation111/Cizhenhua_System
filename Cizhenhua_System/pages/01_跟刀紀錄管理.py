@@ -26,21 +26,19 @@ st.markdown("""
 
 @st.cache_resource(ttl=60)
 def get_ss():
-    """建立連線並自動修正金鑰格式"""
     try:
         creds_info = st.secrets["gcp_service_account"].to_dict()
         if "private_key" in creds_info:
-            # 徹底清理金鑰：處理雙斜槓、去除前後空格與不正常換行
-            clean_key = creds_info["private_key"].replace("\\n", "\n").strip()
-            creds_info["private_key"] = clean_key
+            # 1. 修正可能被誤轉義的斜槓 2. 去除首尾不可見空格或溢出的字元
+            creds_info["private_key"] = creds_info["private_key"].replace("\\n", "\n").strip()
             
         scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
         creds = Credentials.from_service_account_info(creds_info, scopes=scope)
         return gspread.authorize(creds).open_by_key(SPREADSHEET_ID)
     except Exception as e:
+        # 如果連線失敗，直接顯示完整錯誤，不隱藏
         st.error(f"❌ 連線失敗: {str(e)}")
         return None
-
 ss = get_ss()
 
 @st.cache_data(ttl=600)
