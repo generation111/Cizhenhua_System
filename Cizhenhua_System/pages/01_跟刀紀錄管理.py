@@ -37,30 +37,36 @@ import re
 @st.cache_resource(ttl=60)
 def get_ss():
     try:
-        # 1. 取得 Secrets
+        # 1. 取得 Secrets 字典
         creds_info = st.secrets["gcp_service_account"].to_dict()
         
+        # 2. 處理 Base64 解碼
         if "private_key_base64" in creds_info:
             b64_str = creds_info["private_key_base64"]
             
-            # 2. 清洗 Base64 垃圾字元 (只留合法字元)
+            # 強力清洗字串，只留下 Base64 合法字元
             b64_clean = re.sub(r'[^A-Za-z0-9+/=]', '', b64_str)
             
-            # 3. 解碼並處理換行 (解決 MalformedFraming)
-            # 先用 latin-1 避開編碼報錯，再把物理斜槓 \\n 轉為真正的換行 \n
-            raw_content = base64.b64decode(b64_clean).decode("latin-1")
-            clean_content = raw_content.replace("\\n", "\n").replace('"', '').strip()
+            # 解碼為 latin-1 避開編碼報錯
+            raw_key = base64.b64decode(b64_clean).decode("latin-1")
             
-            # 4. 強制 PEM 結構校正 (確保外框正確)
-            if "-----BEGIN PRIVATE KEY-----" not in clean_content:
-                # 如果解碼出來不包含外框，我們幫它補上去 (視情況而定，通常解碼後會包含)
-                pass 
+            # 3. 【關鍵修正】強制重組 PEM 結構
+            # 先把所有可能出現的物理斜槓 \\n 轉成真正換行，並移除所有引號
+            clean_key = raw_key.replace("\\n", "\n").replace('"', '').strip()
             
-            creds_info["private_key"] = clean_content
+            # 確保內容包含正確的開頭與結尾（解決 MalformedFraming）
+            if "-----BEGIN PRIVATE KEY-----" not in clean_key:
+                clean_key = f"-----BEGIN PRIVATE KEY-----\n{clean_key}\n-----END PRIVATE KEY-----"
+            
+            # 4. 【關鍵修正】指派回 Google 規定的標籤名稱
+            creds_info["private_key"] = clean_key
             
         scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+        
+        # 5. 現在 creds_info 裡同時有正確格式與正確標籤了
         creds = Credentials.from_service_account_info(creds_info, scopes=scope)
         return gspread.authorize(creds).open_by_key(SPREADSHEET_ID)
+        
     except Exception as e:
         st.error(f"❌ 資料庫連線失敗: {str(e)}")
         return None
