@@ -42,7 +42,7 @@ div[data-baseweb="textarea"] {
 
 div[data-baseweb="textarea"] textarea {
     padding: 2px 14px !important;  /* 縮減內邊距，騰出空間 */
-    line-height: 0.2!important;   /* 調整行高，讓單行文字置中 */
+    line-height: 0.5!important;   /* 調整行高，讓單行文字置中 */
     font-size: 18px !important;
 }
 
