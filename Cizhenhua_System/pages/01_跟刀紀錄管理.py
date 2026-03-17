@@ -40,23 +40,7 @@ def get_ss():
 ss = get_ss()
 
 # --- 修正後的連線與讀取邏輯 ---
-
-@st.cache_resource(ttl=60)
-def get_ss():
-    try:
-        scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-        # 確保 secrets 欄位名稱與此一致
-        creds_info = st.secrets["gcp_service_account"]
-        creds = Credentials.from_service_account_info(creds_info, scopes=scope)
-        return gspread.authorize(creds).open_by_key(SPREADSHEET_ID)
-    except Exception as e:
-        # 如果連線建立失敗，直接在畫面上印出原因
-        st.error(f"❌ 無法建立 Google 連線，請檢查 Secrets 設定。原因：{str(e)}")
-        return None
-
-# 重新獲取連線物件
-ss = get_ss()
-
+# 1. 確保分頁名稱是 "Settings"
 @st.cache_data(ttl=600)
 def get_options():
     default_opt = {
@@ -64,15 +48,14 @@ def get_options():
         "rep": ["載入中"], "dept": ["載入中"], "blood": ["載入中"]
     }
     
-    # 關鍵：如果 ss 是 None，就不執行後面的 worksheet 動作
-    if ss is None: 
+    if ss is None: # 如果 Secrets 格式錯誤，ss 就會是 None
         return default_opt
         
     try:
-        # 依照您的反饋，將分頁改為 "Settings"
-        ws_opt = ss.worksheet("Settings") 
+        ws_opt = ss.worksheet("Settings") # 這裡已配合您的試算表名稱改為 Settings
         df_opt = pd.DataFrame(ws_opt.get_all_records())
         
+        # 這裡回傳一個字典 (Dictionary)
         return {
             "price": df_opt["批價內容"].dropna().unique().tolist(),
             "prod": df_opt["產品項目"].dropna().unique().tolist(),
@@ -82,9 +65,16 @@ def get_options():
             "blood": df_opt["抽血人員"].dropna().unique().tolist() if "抽血人員" in df_opt.columns else ["載入中"]
         }
     except Exception as e:
-        st.error(f"⚠️ Settings 分頁讀取失敗：{str(e)}")
         return default_opt
 
+# 2. 確保 OPT 是一個字典
+OPT = get_options()
+
+# 3. 在 selectbox 調用時，請這樣寫（確保 OPT 是字典後才能用 .get()）
+if isinstance(OPT, dict):
+    d_price = c4.selectbox("批價內容", OPT.get("price", ["載入中"]), key="price_key")
+else:
+    st.error("資料格式讀取錯誤")
 OPT = get_options()
 
 # --- 4. 介面佈局 ---
