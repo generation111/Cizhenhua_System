@@ -31,46 +31,23 @@ st.markdown("""
 
 # --- 3. 數據連線 ---
 
-import streamlit as st
-import gspread
-from google.oauth2.service_account import Credentials
-import re
-
 @st.cache_resource(ttl=60)
 def get_ss():
     try:
-        # 1. 取得 Secrets 字典
+        # 直接抓 Secrets 轉換成字典
         creds_info = st.secrets["gcp_service_account"].to_dict()
         
+        # 唯一的處理：把文字上的 \n 轉成真正的換行，其餘完全不動
         if "private_key" in creds_info:
-            pk = creds_info["private_key"]
-            
-            # --- 終極排毒：只保留金鑰核心字元 ---
-            # 1. 移除 BEGIN 和 END 標頭，避免它們被誤認成資料
-            core = pk.replace("-----BEGIN PRIVATE KEY-----", "").replace("-----END PRIVATE KEY-----", "")
-            
-            # 2. 核心大刀：只留下 Base64 合法字元 (A-Z, a-z, 0-9, +, /, =)
-            # 這會瞬間砍掉您剛才夾帶進去的引號 (")、逗號 (,)、斜槓 (\) 和任何隱形字元
-            core = "".join(re.findall(r'[A-Za-z0-9+/=]', core))
-            
-            # 3. 重新手工鑄造標準 PEM 格式 (每 64 字元換行)
-            formatted_key = "-----BEGIN PRIVATE KEY-----\n"
-            for i in range(0, len(core), 64):
-                formatted_key += core[i:i+64] + "\n"
-            formatted_key += "-----END PRIVATE KEY-----\n"
-            
-            creds_info["private_key"] = formatted_key
+            creds_info["private_key"] = creds_info["private_key"].replace("\\n", "\n")
             
         scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
         creds = Credentials.from_service_account_info(creds_info, scopes=scope)
-        
-        # 請確保 SPREADSHEET_ID 已定義
         return gspread.authorize(creds).open_by_key(SPREADSHEET_ID)
-        
     except Exception as e:
-        st.error(f"❌ 終極修復失敗: {str(e)}")
+        # 顯示詳細錯誤，幫我們做最後診斷
+        st.error(f"❌ 系統連線失敗: {str(e)}")
         return None
-
 ss = get_ss()
 
 @st.cache_data(ttl=60)
