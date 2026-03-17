@@ -14,24 +14,34 @@ components.html(
     height=0,
 )
 
-# --- 修改樣式區塊，確保文字與按鈕不會因為縮放而跑位 ---
+# --- 修改 CSS 樣式區塊 ---
 st.markdown("""
 <style>
-    /* 讓整個系統容器自適應，不論縮放比例 */
-    html, body, [data-testid="stAppViewContainer"] {
-        overflow-x: hidden !important;
-        width: 100vw !important;
+    /* 1. 核心修正：鎖定電腦版最大寬度為 1200px 並置中 */
+    [data-testid="stAppViewContainer"] > section:nth-child(2) > div:nth-child(1) {
+        max-width: 1200px !important;
+        margin: 0 auto !important;
     }
     
-    .block-container { 
-        padding-top: 2rem !important; 
-        max-width: 100% !important; 
+    /* 2. 讓整體背景顏色與內容區塊有所區隔 (選配，增加層次感) */
+    .stApp {
+        background-color: #F0F2F6;
+    }
+    
+    [data-testid="stVerticalBlock"] {
+        background-color: white;
+        padding: 20px;
+        border-radius: 15px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
     }
 
-    /* 針對頂部主選單按鈕的優化 */
-    div.stButton > button {
-        white-space: nowrap; /* 確保按鈕文字不換行 */
-        font-size: 14px !important; /* 固定字體大小，不隨系統縮放混亂 */
+    /* 3. 原有的標題與元件優化 */
+    .block-container { 
+        padding-top: 2rem !important; 
+    }
+    .sys-title { 
+        text-align: center; font-size: 24px !important; font-weight: 850; 
+        color: #1E3A8A; margin-bottom: 20px !important;
     }
 </style>
 """, unsafe_allow_html=True)
