@@ -12,14 +12,23 @@ SPREADSHEET_ID = "1w2BDsPHHxgaz6PJhoPLXdh0UQJplA6rr42wLoLQIM9s"
 
 st.set_page_config(page_title=f"{SYS_TITLE}", layout="wide", initial_sidebar_state="collapsed")
 
-# --- 2. 樣式優化 (標題貼頂 + 單列對齊) ---
+# --- 2. 樣式優化 (標題貼頂修正 + 單列對齊) ---
 st.markdown("""
 <style>
-    .block-container { padding-top: 1.5rem !important; padding-bottom: 0rem !important; }
+    /* 放寬頂部邊距，避免標題被切掉 */
+    .block-container { padding-top: 2.5rem !important; padding-bottom: 0rem !important; }
+    
     .sys-title { 
-        text-align: center; font-size: 26px !important; font-weight: 850; 
-        color: #1E3A8A; margin-top: -10px !important; margin-bottom: 15px !important;
+        text-align: center; 
+        font-size: 24px !important; /* 稍微縮小字體以適應寬度 */
+        font-weight: 850; 
+        color: #1E3A8A; 
+        margin-top: -20px !important; 
+        margin-bottom: 20px !important;
+        white-space: nowrap; /* 強制不換行 */
+        overflow: visible;
     }
+    
     hr { display: none !important; }
     div[data-testid="column"] { display: flex; align-items: center; justify-content: center; }
     div[data-testid="stTextArea"] label { display: none !important; }
@@ -28,6 +37,7 @@ st.markdown("""
     footer {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
+
 
 # --- 3. 數據連線 ---
 
