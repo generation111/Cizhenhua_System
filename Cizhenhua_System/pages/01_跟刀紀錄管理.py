@@ -28,9 +28,10 @@ st.markdown("""
 def get_ss():
     try:
         creds_info = st.secrets["gcp_service_account"].to_dict()
-        if "private_key" in creds_info:
-            # 1. 修正可能被誤轉義的斜槓 2. 去除首尾不可見空格或溢出的字元
-            creds_info["private_key"] = creds_info["private_key"].replace("\\n", "\n").strip()
+       if "private_key" in creds_info:
+    # 這裡的 strip() 會移除掉所有溢出的隱形字元
+    fixed_key = creds_info["private_key"].replace("\\n", "\n").strip()
+    creds_info["private_key"] = fixed_key
             
         scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
         creds = Credentials.from_service_account_info(creds_info, scopes=scope)
