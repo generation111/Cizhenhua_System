@@ -29,7 +29,7 @@ st.markdown("""
     .title-c { background: linear-gradient(90deg, #475569, #64748B); }
     .title-n { background: linear-gradient(90deg, #1E293B, #334155); }
     .stButton>button { height: 45px !important; border-radius: 8px !important; }
-    div[data-baseweb="textarea"] { min-height: 50px !important; }
+    div[data-baseweb="textarea"] { min-height: 40px !important; }
     footer {visibility: hidden;}
     .info-bar { display: flex; justify-content: space-between; background: #EDF2F7; padding: 10px; border-radius: 10px; margin-bottom: 10px; border-left: 5px solid #2B6CB0; }
     .info-item { font-size: 14px; color: #2D3748; }
