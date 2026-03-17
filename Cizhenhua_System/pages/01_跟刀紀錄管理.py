@@ -82,28 +82,48 @@ st.markdown(f'<div class="sys-title">📋 {SYS_TITLE}</div>', unsafe_allow_html=
 tab1, tab2, tab3 = st.tabs(["🖋️ 資料登錄", "📊 歷史紀錄", "🔍 預購追蹤"])
 
 with tab1:
-    if "rk_v11" not in st.session_state: st.session_state.rk_v11 = 0
+    if "rk_v11" not in st.session_state: 
+        st.session_state.rk_v11 = 0
     rk = st.session_state.rk_v11
     
     # 資料輸入區
-    c1, c2, c3 = st.columns(3); d_date = c1.date_input("使用日期", value=datetime.now(tw_tz).date(), key=f"d_{rk}"); d_dr = c2.text_input("醫師姓名", key=f"dr_{rk}"); d_content = c3.text_input("產品內容(含預購)", key=f"cn_{rk}")
-    c4, c5, c6 = st.columns(3); d_price = c4.selectbox("批價內容", OPT.get("price"), key=f"pr_{rk}"); d_prod = c5.selectbox("產品項目", OPT.get("prod"), key=f"pd_{rk}"); d_pname = c6.text_input("病人名", key=f"pn_{rk}")
-    c7, c8, c9 = st.columns(3); d_hosp = c7.selectbox("使用醫院", OPT.get("hosp"), key=f"hs_{rk}"); d_spec = c8.text_input("規格", key=f"sp_{rk}"); d_pid = c9.text_input("病例號/ID", key=f"pi_{rk}")
-    c10, c11, c12 = st.columns(3); d_dept = c10.selectbox("使用科別", OPT.get("dept"), key=f"dp_{rk}"); d_qty = c11.number_input("數量", min_value=1, value=1, key=f"qt_{rk}"); d_opname = c12.text_input("手術名稱/部位", key=f"op_{rk}")
-    c13, c14, c15 = st.columns(3); d_loc = c13.selectbox("使用地點", OPT.get("loc"), key=f"lc_{rk}"); d_blood = c14.selectbox("抽血人員", OPT.get("blood"), key=f"bl_{rk}"); d_rep = c15.selectbox("跟刀(人員)", OPT.get("rep"), key=f"rp_{rk}")
+    c1, c2, c3 = st.columns(3)
+    d_date = c1.date_input("使用日期", value=datetime.now(tw_tz).date(), key=f"d_{rk}")
+    d_dr = c2.text_input("醫師姓名", key=f"dr_{rk}")
+    d_content = c3.text_input("產品內容(含預購)", key=f"cn_{rk}")
+    
+    c4, c5, c6 = st.columns(3)
+    d_price = c4.selectbox("批價內容", OPT.get("price"), key=f"pr_{rk}")
+    d_prod = c5.selectbox("產品項目", OPT.get("prod"), key=f"pd_{rk}")
+    d_pname = c6.text_input("病人名", key=f"pn_{rk}")
+    
+    c7, c8, c9 = st.columns(3)
+    d_hosp = c7.selectbox("使用醫院", OPT.get("hosp"), key=f"hs_{rk}")
+    d_spec = c8.text_input("規格", key=f"sp_{rk}")
+    d_pid = c9.text_input("病例號/ID", key=f"pi_{rk}")
+    
+    c10, c11, c12 = st.columns(3)
+    d_dept = c10.selectbox("使用科別", OPT.get("dept"), key=f"dp_{rk}")
+    d_qty = c11.number_input("數量", min_value=1, value=1, key=f"qt_{rk}")
+    d_opname = c12.text_input("手術名稱/部位", key=f"op_{rk}")
+    
+    c13, c14, c15 = st.columns(3)
+    d_loc = c13.selectbox("使用地點", OPT.get("loc"), key=f"lc_{rk}")
+    d_blood = c14.selectbox("抽血人員", OPT.get("blood"), key=f"bl_{rk}")
+    d_rep = c15.selectbox("跟刀(人員)", OPT.get("rep"), key=f"rp_{rk}")
 
-        bc1, bc2, bc3 = st.columns([0.5, 3.0, 1.0]) 
+    # 底部備註與提交區 (修正縮排處)
+    bc1, bc2, bc3 = st.columns([0.5, 3.2, 1.3]) 
     
-   with bc1:
-        st.markdown('<p style="font-weight:bold; margin-top:8px;">備註</p>', unsafe_allow_html=True)
+    with bc1:
+        st.markdown('<p style="font-weight:bold; margin-top:8px;">備註說明</p>', unsafe_allow_html=True)
     
-   with bc2:
-        # 請確保 d_memo 這幾行前面都只有「一組」縮排（4個空格）
+    with bc2:
         d_memo = st.text_area(
             "備註",
             key=f"me_{rk}",
             height=40,
-            placeholder="請輸入備註...",
+            placeholder="請輸入備註內容...",
             label_visibility="collapsed"
         )
 
@@ -112,10 +132,18 @@ with tab1:
             if ss:
                 try:
                     ws_res = ss.worksheet("回應試算表")
-                    row = [str(d_date), d_price, d_hosp, d_dept, d_dr, d_prod, d_spec, d_qty, d_content, d_pname, d_pid, d_opname, d_loc, d_blood, d_rep, d_memo]
+                    # 按照資料表順序填入
+                    row = [
+                        str(d_date), d_price, d_hosp, d_dept, d_dr, 
+                        d_prod, d_spec, d_qty, d_content, d_pname, 
+                        d_pid, d_opname, d_loc, d_blood, d_rep, d_memo
+                    ]
                     ws_res.append_row(row, value_input_option='USER_ENTERED')
-                    st.toast("✅ 資料已成功存檔"); time.sleep(1)
+                    st.toast("✅ 資料已成功存檔")
+                    time.sleep(1)
                     st.session_state.rk_v11 += 1
                     st.rerun()
-                except Exception as e: st.error(f"寫入失敗: {str(e)}")
-            else: st.error("連線未建立，無法存檔。")
+                except Exception as e:
+                    st.error(f"寫入失敗: {str(e)}")
+            else:
+                st.error("連線未建立，請檢查 Secrets 設定。")
