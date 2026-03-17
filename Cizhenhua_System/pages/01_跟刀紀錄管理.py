@@ -10,7 +10,7 @@ tw_tz = timezone(timedelta(hours=8))
 SYS_TITLE = "慈榛驊業務管理系統（全功能終極修復版）"
 SPREADSHEET_ID = "1w2BDsPHHxgaz6PJhoPLXdh0UQJplA6rr42wLoLQIM9s"
 
-st.set_page_config(page_title=f"{SYS_TITLE}", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title=f"{SYS_TITLE}", layout="centered", initial_sidebar_state="collapsed")
 
 # --- 2. 樣式優化 (標題貼頂修正 + 單列對齊) ---
 st.markdown("""
