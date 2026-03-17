@@ -37,33 +37,35 @@ import re
 @st.cache_resource(ttl=60)
 def get_ss():
     try:
-        # 1. 取得 Secrets 字典
+        # 1. 取得原始資訊
         creds_info = st.secrets["gcp_service_account"].to_dict()
         
-        # 2. 處理 Base64 解碼
         if "private_key_base64" in creds_info:
             b64_str = creds_info["private_key_base64"]
             
-            # 強力清洗字串，只留下 Base64 合法字元
+            # 2. 強力清洗：只留下合法 Base64 字元
             b64_clean = re.sub(r'[^A-Za-z0-9+/=]', '', b64_str)
             
-            # 解碼為 latin-1 避開編碼報錯
-            raw_key = base64.b64decode(b64_clean).decode("latin-1")
+            # 3. 解碼並處理可能被重複轉義的換行
+            raw_decoded = base64.b64decode(b64_clean).decode("latin-1")
             
-            # 3. 【關鍵修正】強制重組 PEM 結構
-            # 先把所有可能出現的物理斜槓 \\n 轉成真正換行，並移除所有引號
-            clean_key = raw_key.replace("\\n", "\n").replace('"', '').strip()
+            # 4. 【核心修復】手動重建標準 PEM 結構
+            # 移除所有已存在的標頭、結尾、換行與引號，只留核心內容字串
+            core_key = raw_decoded.replace("-----BEGIN PRIVATE KEY-----", "") \
+                                  .replace("-----END PRIVATE KEY-----", "") \
+                                  .replace("\\n", "").replace("\n", "") \
+                                  .replace('"', '').replace(" ", "").strip()
             
-            # 確保內容包含正確的開頭與結尾（解決 MalformedFraming）
-            if "-----BEGIN PRIVATE KEY-----" not in clean_key:
-                clean_key = f"-----BEGIN PRIVATE KEY-----\n{clean_key}\n-----END PRIVATE KEY-----"
+            # 強制每 64 個字元換一行（這是 PEM 標準格式）
+            formatted_key = "-----BEGIN PRIVATE KEY-----\n"
+            for i in range(0, len(core_key), 64):
+                formatted_key += core_key[i:i+64] + "\n"
+            formatted_key += "-----END PRIVATE KEY-----\n"
             
-            # 4. 【關鍵修正】指派回 Google 規定的標籤名稱
-            creds_info["private_key"] = clean_key
+            # 5. 塞回 Google 要求的標籤
+            creds_info["private_key"] = formatted_key
             
         scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-        
-        # 5. 現在 creds_info 裡同時有正確格式與正確標籤了
         creds = Credentials.from_service_account_info(creds_info, scopes=scope)
         return gspread.authorize(creds).open_by_key(SPREADSHEET_ID)
         
