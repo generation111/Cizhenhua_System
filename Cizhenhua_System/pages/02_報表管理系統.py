@@ -18,7 +18,7 @@ st.set_page_config(
 # --- 2. UI 樣式優化 (精準定位紅色清空鈕 + 錄入框扁平化) ---
 st.markdown("""
 <style>
-    .block-container { padding-top: 3.7rem !important; max-width: 950px !important; }
+    .block-container { padding-top: 4rem !important; max-width: 950px !important; }
     [data-testid="stHeader"] { visibility: visible !important; }
     
     /* 文字黑化 */
@@ -37,13 +37,13 @@ st.markdown("""
     
    /* 訪談內容錄入框：高度再調降 50% 並優化視覺 */
 div[data-baseweb="textarea"] { 
-    min-height: 45px !important;  /* 原 90px 下降 50% 至 45px */
+    min-height: 20px !important;  /
 }
 
 div[data-baseweb="textarea"] textarea {
     padding: 4px 8px !important;  /* 縮減內邊距，騰出空間 */
-    line-height: 1.3 !important;   /* 調整行高，讓單行文字置中 */
-    font-size: 14px !important;
+    line-height: 0.7 !important;   /* 調整行高，讓單行文字置中 */
+    font-size: 8px !important;
 }
 
     }
