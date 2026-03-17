@@ -74,39 +74,35 @@ st.markdown(f'<div class="sys-title">📊 {SYS_TITLE}</div>', unsafe_allow_html=
 # --- 5. 官方推薦穩定連線法 (修復 Response 200 問題) ---
 def load_all_data():
     try:
-        # 使用 Streamlit 內建連線工具，它比純 gspread 更能處理 secrets 格式問題
-        from streamlit_gsheets import GSheetsConnection
+        # 1. 取得金鑰與授權
+        info = dict(st.secrets["gcp_service_account"])
+        info["private_key"] = info["private_key"].replace("\\n", "\n")
+        scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+        creds = Credentials.from_service_account_info(info, scopes=scopes)
+        gc = gspread.authorize(creds)
         
-        # 建立連線 (它會自動去找 secrets 裡的 gcp_service_account)
-        conn = st.connection("gsheets", type=GSheetsConnection)
+        # 2. 【佰哥關鍵修改區】
+        # 直接貼上您試算表的完整網址，最不容易出錯
+        SHEET_URL = "https://docs.google.com/spreadsheets/d/您的試算表ID/edit" 
         
-        # 直接讀取工作表
-        # 參數說明：worksheet 是分頁名稱，ttl 是快取時間（秒）
-        df = conn.read(
-            worksheet="回應試算表",
-            ttl="10m"
-        )
+        # 使用網址開啟 (open_by_url)
+        sh = gc.open_by_url(SHEET_URL)
         
-        return df
-    except Exception as e:
-        # 備援方案：如果沒有安裝 st-gsheets，就用回傳統方式但加入強效格式化
-        try:
-            info = dict(st.secrets["gcp_service_account"])
-            # 強制修復可能出錯的換行符號
-            info["private_key"] = info["private_key"].replace("\\n", "\n")
-            
-            scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-            creds = Credentials.from_service_account_info(info, scopes=scopes)
-            gc = gspread.authorize(creds)
-            
-            # 改用 ID 開啟是最穩的 (請填入您的 ID)
-            sh = gc.open_by_key("1B_pS9y6-v_CqMv6lO6U5oB3hS3O0_X4q8j-S9v6M123") 
-            ws = sh.worksheet("回應試算表")
-            rows = ws.get_all_values()
-            return pd.DataFrame(rows[1:], columns=rows[0])
-        except Exception as e2:
-            st.error(f"❌ 雲端資料庫讀取失敗: {str(e2)}")
+        # 檢查工作表名稱是否真的叫「回應試算表」，如果不確定，可以改用索引開啟
+        # ws = sh.worksheet("回應試算表") # 按名稱找
+        ws = sh.get_worksheet(0)       # 暴力法：直接開第一個分頁（索引0）
+        
+        rows = ws.get_all_values()
+        if not rows:
             return pd.DataFrame()
+            
+        return pd.DataFrame(rows[1:], columns=rows[0])
+
+    except Exception as e:
+        # 顯示更精確的錯誤訊息
+        st.error(f"❌ 讀取失敗：{str(e)}")
+        st.warning("請檢查：1. 網址是否正確 2. 試算表是否有共用給 Service Account 的 Email")
+        return pd.DataFrame()
 
 # --- 6. 報表顯示區 ---
 st.subheader("📋 業務數據報表")
