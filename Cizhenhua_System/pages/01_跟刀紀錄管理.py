@@ -61,9 +61,7 @@ def get_ss():
     except Exception as e:
         st.error(f"❌ 連線失敗: {str(e)}")
         return None
-
 OPT = get_options()
-
 # --- 4. 介面佈局 ---
 st.markdown(f'<div class="sys-title">📋 {SYS_TITLE}</div>', unsafe_allow_html=True)
 tab1, tab2, tab3 = st.tabs(["🖋️ 資料登錄", "📊 歷史紀錄", "🔍 預購追蹤"])
