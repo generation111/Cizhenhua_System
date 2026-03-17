@@ -39,25 +39,32 @@ def get_ss():
 
 ss = get_ss()
 
+# --- 修正 get_options 函數內的名稱 ---
 @st.cache_data(ttl=600)
 def get_options():
-    default_opt = {
-        "price": ["載入中"], "prod": ["載入中"], "hosp": ["載入中"], 
-        "rep": ["載入中"], "dept": ["載入中"], "blood": ["載入中"]
-    }
-    if not ss: return default_opt
+    # ... (前段預設值略)
     try:
-        ws_opt = ss.worksheet("Settings")
-        df_opt = pd.DataFrame(ws_opt.get_all_records())
+        # 將 "設定檔" 改為 "Settings"
+        ws_opt = ss.worksheet("Settings") 
+        
+        opt_data = ws_opt.get_all_records()
+        df_opt = pd.DataFrame(opt_data)
+        
+        # 請同時確認您的試算表欄位名稱（第一列）是否為中文，若也是英文則需對應修改
         return {
             "price": df_opt["批價內容"].dropna().unique().tolist(),
             "prod": df_opt["產品項目"].dropna().unique().tolist(),
             "hosp": df_opt["使用醫院"].dropna().unique().tolist(),
             "rep": df_opt["業務代表"].dropna().unique().tolist(),
+            # 若試算表沒有「使用科別」等欄位，這裡會安全回傳「載入中」
             "dept": df_opt["使用科別"].dropna().unique().tolist() if "使用科別" in df_opt.columns else ["載入中"],
             "blood": df_opt["抽血人員"].dropna().unique().tolist() if "抽血人員" in df_opt.columns else ["載入中"]
         }
-    except: return default_opt
+    except Exception as e:
+        # 建議加入這行，如果還是載入中，它會顯示具體是哪個欄位名稱對不起來
+        st.error(f"⚠️ 讀取失敗詳細原因：{str(e)}")
+        return default_opt
+
 
 OPT = get_options()
 
