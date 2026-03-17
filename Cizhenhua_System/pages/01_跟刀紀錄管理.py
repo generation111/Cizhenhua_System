@@ -94,14 +94,15 @@ with tab1:
 
     bc1, bc2, bc3 = st.columns([0.3, 3.2, 1])
     with bc1: st.markdown('<p style="font-weight:bold; margin-top:8px;">備註</p>', unsafe_allow_html=True)
-   with bc2: 
-    d_memo = st.text_area(
-        "備註", 
-        key=f"me_{rk}", 
-        height=40, 
-        placeholder="請輸入備註...", 
-        label_visibility="collapsed"  # 這行是關鍵：提供標籤但徹底隱藏空間
-    )
+   # 假設這是在一個 loop 或 if 裡面，請確保 d_memo 與上方的代碼對齊
+    with bc2: 
+            d_memo = st.text_area(
+                "備註", 
+                key=f"me_{rk}", 
+                height=40, 
+                placeholder="請輸入備註...", 
+                label_visibility="collapsed"
+            )
 
     with bc3:
         if st.button("🚀 提交數據", key="submit_btn"):
