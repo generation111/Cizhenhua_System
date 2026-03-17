@@ -64,22 +64,27 @@ st.set_page_config(
 )
 
 # --- 2. 側邊欄與 UI 樣式優化 ---
+# --- 修改 CSS 樣式區塊 ---
 st.markdown("""
 <style>
-    .block-container { padding-top: 2.5rem !important; }
-    [data-testid="stSidebarNav"] span { font-size: 22px !important; font-weight: bold !important; }
-    [data-testid="column"] { display: flex; align-items: flex-end; }
-    .stApp { background-color: #F8FAFC; }
-    .sys-title { text-align: center; font-size: 26px !important; font-weight: 850; color: #1E3A8A; margin-bottom: 20px; }
-    .item-l { color: white; padding: 10px 15px; border-radius: 8px; font-weight: 700; margin: 15px 0 10px 0; font-size: 14px; }
-    .title-p { background: linear-gradient(90deg, #64748B, #94A3B8); }
-    .title-c { background: linear-gradient(90deg, #475569, #64748B); }
-    .title-n { background: linear-gradient(90deg, #1E293B, #334155); }
-    .stButton>button { height: 45px !important; border-radius: 8px !important; }
-    div[data-baseweb="textarea"] { min-height: 40px !important; }
-    footer {visibility: hidden;}
-    .info-bar { display: flex; justify-content: space-between; background: #EDF2F7; padding: 10px; border-radius: 10px; margin-bottom: 10px; border-left: 5px solid #2B6CB0; }
-    .info-item { font-size: 14px; color: #2D3748; }
+    /* 1. 強制產品按鈕文字不換行，並維持單行顯示 */
+    div.stButton > button p {
+        white-space: nowrap !important;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* 2. 微調按鈕內距，讓文字有更多空間伸展 */
+    div.stButton > button {
+        padding-left: 5px !important;
+        padding-right: 5px !important;
+        min-width: 80px !important; /* 給予最小寬度防止過窄 */
+    }
+
+    /* 3. 針對產品快速選取區塊的欄位間距優化 */
+    [data-testid="column"] {
+        gap: 0.5rem !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
