@@ -43,28 +43,28 @@ def get_ss():
         if "private_key_base64" in creds_info:
             b64_str = creds_info["private_key_base64"]
             
-            # --- 核心修正 1：強力過濾垃圾字元 ---
-            # 只保留 [A-Z, a-z, 0-9, +, /, =]，徹底剔除隱形換行或特殊空白
+            # --- 核心修正 1：極限濾網 ---
+            # 只保留 Base64 合法字元，徹底剔除所有隱形空格、換行或特殊字元
             b64_clean = "".join(re.findall(r'[A-Za-z0-9+/=]', b64_str))
             
-            # 2. 解碼（使用 latin-1 確保不報 utf-8 編碼錯）
+            # 2. 解碼（使用 latin-1 避開 utf-8 的編碼報錯）
             decoded_text = base64.b64decode(b64_clean).decode("latin-1")
             
-            # --- 核心修正 2：手動重建 PEM 結構 ---
-            # 移除所有已存在的標頭、結尾、物理斜槓 \\n 與物理換行
+            # --- 核心修正 2：暴力重建 PEM 結構 ---
+            # 移除所有已存在的標頭標尾、物理斜槓 \\n 與物理換行符號
             core_content = decoded_text.replace("-----BEGIN PRIVATE KEY-----", "") \
                                        .replace("-----END PRIVATE KEY-----", "") \
                                        .replace("\\n", "").replace("\n", "") \
                                        .replace("\r", "").replace('"', '') \
                                        .replace(" ", "").strip()
             
-            # 重新手工組裝：每 64 個字元換一行（這是最標準的 PEM 格式）
+            # 重新手工組裝：每 64 個字元強制換一行（這是標準 PEM 的物理結構）
             formatted_key = "-----BEGIN PRIVATE KEY-----\n"
             for i in range(0, len(core_content), 64):
                 formatted_key += core_content[i:i+64] + "\n"
             formatted_key += "-----END PRIVATE KEY-----\n"
             
-            # 3. 塞回 Google 規定的標籤
+            # 3. 強制塞回 Google 規定的 "private_key" 標籤位子
             creds_info["private_key"] = formatted_key
             
         scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
@@ -76,6 +76,7 @@ def get_ss():
     except Exception as e:
         st.error(f"❌ 資料庫連線失敗: {str(e)}")
         return None
+
 ss = get_ss()
 
 @st.cache_data(ttl=60)
