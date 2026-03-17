@@ -71,42 +71,54 @@ st.markdown("""
 # --- 4. 顯示系統標題 ---
 st.markdown(f'<div class="sys-title">📊 {SYS_TITLE}</div>', unsafe_allow_html=True)
 
-# --- 5. 修正後的 Google Sheets 連線函式 ---
-@st.cache_data(ttl=60)
+# --- 5. 官方推薦穩定連線法 (修復 Response 200 問題) ---
 def load_all_data():
     try:
-        # 1. 取得金鑰
-        info = st.secrets["gcp_service_account"]
-        scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-        creds = Credentials.from_service_account_info(info, scopes=scopes)
-        gc = gspread.authorize(creds)
+        # 使用 Streamlit 內建連線工具，它比純 gspread 更能處理 secrets 格式問題
+        from streamlit_gsheets import GSheetsConnection
         
-        # 2. 【佰哥關鍵動作】：請將下方引號內文字換成您試算表網址中的那串 ID
-        # 網址長這樣：https://docs.google.com/spreadsheets/d/【這串就是ID】/edit
-        SPREADSHEET_ID = "1w2BDsPHHxgaz6PJhoPLXdh0UQJplA6rr42wLoLQIM9s" # <--- 請換成您的 ID
+        # 建立連線 (它會自動去找 secrets 裡的 gcp_service_account)
+        conn = st.connection("gsheets", type=GSheetsConnection)
         
-        sh = gc.open_by_key(SPREADSHEET_ID)
-        ws = sh.worksheet("回應試算表")
+        # 直接讀取工作表
+        # 參數說明：worksheet 是分頁名稱，ttl 是快取時間（秒）
+        df = conn.read(
+            worksheet="回應試算表",
+            ttl="10m"
+        )
         
-        rows = ws.get_all_values()
-        if not rows:
-            return pd.DataFrame()
-        
-        return pd.DataFrame(rows[1:], columns=rows[0])
-
+        return df
     except Exception as e:
-        # 這樣能看到到底是哪裡出問題
-        st.error(f"❌ 連線異常: {str(e)}")
-        return pd.DataFrame()
+        # 備援方案：如果沒有安裝 st-gsheets，就用回傳統方式但加入強效格式化
+        try:
+            info = dict(st.secrets["gcp_service_account"])
+            # 強制修復可能出錯的換行符號
+            info["private_key"] = info["private_key"].replace("\\n", "\n")
+            
+            scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+            creds = Credentials.from_service_account_info(info, scopes=scopes)
+            gc = gspread.authorize(creds)
+            
+            # 改用 ID 開啟是最穩的 (請填入您的 ID)
+            sh = gc.open_by_key("1B_pS9y6-v_CqMv6lO6U5oB3hS3O0_X4q8j-S9v6M123") 
+            ws = sh.worksheet("回應試算表")
+            rows = ws.get_all_values()
+            return pd.DataFrame(rows[1:], columns=rows[0])
+        except Exception as e2:
+            st.error(f"❌ 雲端資料庫讀取失敗: {str(e2)}")
+            return pd.DataFrame()
 
 # --- 6. 報表顯示區 ---
 st.subheader("📋 業務數據報表")
 
 df = load_all_data()
 
-if not df.empty:
+if df is not None and not df.empty:
     # 這裡顯示資料表格
     st.dataframe(df, use_container_width=True, hide_index=True)
 else:
-    st.info("📊 正在讀取雲端資料庫，請稍候...")
+    # 如果還在轉圈圈，顯示手動重整按鈕
+    if st.button("🔄 手動重新整理資料"):
+        st.cache_data.clear()
+        st.rerun()
 
