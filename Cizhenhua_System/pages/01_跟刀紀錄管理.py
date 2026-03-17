@@ -37,39 +37,30 @@ import re
 @st.cache_resource(ttl=60)
 def get_ss():
     try:
-        # 1. 取得原始資訊
+        # 1. 取得除了私鑰以外的其他連線資訊
         creds_info = st.secrets["gcp_service_account"].to_dict()
         
-        if "private_key_base64" in creds_info:
-            b64_str = creds_info["private_key_base64"]
-            
-            # --- 核心修正 1：極限濾網 ---
-            # 只保留 Base64 合法字元，徹底剔除所有隱形空格、換行或特殊字元
-            b64_clean = "".join(re.findall(r'[A-Za-z0-9+/=]', b64_str))
-            
-            # 2. 解碼（使用 latin-1 避開 utf-8 的編碼報錯）
-            decoded_text = base64.b64decode(b64_clean).decode("latin-1")
-            
-            # --- 核心修正 2：暴力重建 PEM 結構 ---
-            # 移除所有已存在的標頭標尾、物理斜槓 \\n 與物理換行符號
-            core_content = decoded_text.replace("-----BEGIN PRIVATE KEY-----", "") \
-                                       .replace("-----END PRIVATE KEY-----", "") \
-                                       .replace("\\n", "").replace("\n", "") \
-                                       .replace("\r", "").replace('"', '') \
-                                       .replace(" ", "").strip()
-            
-            # 重新手工組裝：每 64 個字元強制換一行（這是標準 PEM 的物理結構）
-            formatted_key = "-----BEGIN PRIVATE KEY-----\n"
-            for i in range(0, len(core_content), 64):
-                formatted_key += core_content[i:i+64] + "\n"
-            formatted_key += "-----END PRIVATE KEY-----\n"
-            
-            # 3. 強制塞回 Google 規定的 "private_key" 標籤位子
-            creds_info["private_key"] = formatted_key
-            
-        scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+        # 2. 直接在代碼中填入您的私鑰內容 (避免 Secrets 框的格式干擾)
+        # 請確保這裡貼上的是您原始 JSON 檔中 "private_key" 的完整內容
+        raw_key = """-----BEGIN PRIVATE KEY-----
+貼上您的私鑰內容...
+-----END PRIVATE KEY-----"""
+
+        # 3. 強制格式清洗：移除所有轉義斜槓、引號，並重新排版
+        clean_key = raw_key.replace("\\n", "\n").replace('"', '').strip()
         
-        # 4. 執行驗證
+        # 如果金鑰變成了橫向的一長條，強行恢復 64 字元換行的標準 PEM 格式
+        if "\n" not in clean_key.replace("-----BEGIN PRIVATE KEY-----", "").strip():
+            core = clean_key.replace("-----BEGIN PRIVATE KEY-----", "").replace("-----END PRIVATE KEY-----", "").replace("\n", "").strip()
+            clean_key = "-----BEGIN PRIVATE KEY-----\n"
+            for i in range(0, len(core), 64):
+                clean_key += core[i:i+64] + "\n"
+            clean_key += "-----END PRIVATE KEY-----\n"
+
+        # 4. 指派給 Google 驗證工具
+        creds_info["private_key"] = clean_key
+        
+        scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
         creds = Credentials.from_service_account_info(creds_info, scopes=scope)
         return gspread.authorize(creds).open_by_key(SPREADSHEET_ID)
         
