@@ -1,64 +1,51 @@
 import streamlit as st
-import streamlit.components.v1 as components  # <---
+import pandas as pd
+import gspread
+# --- 補上這兩行，解決 Credentials 沒定義的問題 ---
+from google.oauth2.service_account import Credentials
+import streamlit.components.v1 as components 
 
-# 強制寫入 Meta Tag 鎖定縮放 (Viewport Lock)
-components.html(
-    """
-    <script>
-        var meta = document.createElement('meta');
-        meta.name = "viewport";
-        meta.content = "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0";
-        document.getElementsByTagName('head')[0].appendChild(meta);
-    </script>
-    """,
-    height=0,
 )
 
-# --- 修正後的 CSS 樣式區塊 (回歸精簡) ---
+# --- 修正後的 CSS (標題貼頂 + 移除白框 + 瘦身按鈕) ---
 st.markdown("""
 <style>
-    /* 1. 移除側邊欄多餘白框 & 調整整體背景 */
+    /* 1. 移除側邊欄白框 */
     [data-testid="stSidebar"] { background-color: #f0f2f6; }
     [data-testid="stSidebarNav"] { background-color: transparent !important; }
-    
-    /* 2. 標題貼頂：消除上方多餘空白 */
+
+    /* 2. 標題貼頂：消除過多空白 */
     .block-container { 
-        padding-top: 1.5rem !important; 
+        padding-top: 1.0rem !important; /* 縮小到 1.0 */
         max-width: 1300px !important; 
         margin: 0 auto !important; 
     }
     
     .sys-title { 
         text-align: center; font-size: 24px !important; font-weight: 850; 
-        color: #1E3A8A; margin-top: -30px !important; margin-bottom: 15px !important;
+        color: #1E3A8A; 
+        margin-top: -45px !important; /* 加大負值，強迫標題往上衝 */
+        margin-bottom: 10px !important;
         white-space: nowrap;
     }
 
-    /* 3. 產品快速選取：還原精簡外框，強制單行不占空間 */
+    /* 3. 產品快速選取：還原精簡，不占空間 */
     div.stButton > button {
-        height: 38px !important; /* 縮小按鈕高度 */
+        height: 35px !important; /* 高度再縮小一點 */
         padding: 0px 5px !important;
-        border: 1px solid #d1d5db !important; /* 纖細邊框 */
-        border-radius: 8px !important;
+        border: 1px solid #d1d5db !important;
+        border-radius: 6px !important;
         background-color: white !important;
     }
     
     div.stButton > button p {
         white-space: nowrap !important;
-        font-size: 14px !important;
-        margin: 0 !important;
+        font-size: 13px !important; /* 字體微調，確保單行 */
     }
-
-    /* 4. 區塊標題小型化 */
-    .stMarkdown h3 { 
-        font-size: 16px !important; 
-        margin-bottom: 5px !important; 
-        padding-top: 5px !important;
-    }
-
-    /* 隱藏預設元素 */
-    footer {visibility: hidden;}
-    [data-testid="stHeader"] {background: rgba(0,0,0,0);}
+    
+    /* 隱藏頂部預設橫條 */
+    [data-testid="stHeader"] { visibility: hidden; }
+    footer { visibility: hidden; }
 </style>
 """, unsafe_allow_html=True)
 
