@@ -35,13 +35,17 @@ st.markdown("""
     .title-c { background: linear-gradient(90deg, #475569, #64748B); }
     .title-n { background: linear-gradient(90deg, #1E293B, #334155); }
     
-    /* 訪談內容錄入框：極致扁平 (12px) + 內邊距修正 (1px) */
-    div[data-baseweb="textarea"] { 
-        min-height: 12px !important; 
-    }
-    div[data-baseweb="textarea"] textarea {
-        padding: 0.5px !important;
-        line-height: 0.8 !important;
+   /* 訪談內容錄入框：高度再調降 50% 並優化視覺 */
+div[data-baseweb="textarea"] { 
+    min-height: 45px !important;  /* 原 90px 下降 50% 至 45px */
+}
+
+div[data-baseweb="textarea"] textarea {
+    padding: 4px 8px !important;  /* 縮減內邊距，騰出空間 */
+    line-height: 1.3 !important;   /* 調整行高，讓單行文字置中 */
+    font-size: 14px !important;
+}
+
     }
     
     /* 提交按鈕樣式 (藍色) */
