@@ -83,7 +83,7 @@ def load_all_data():
         
         # 2. 【佰哥關鍵修改區】
         # 直接貼上您試算表的完整網址，最不容易出錯
-        SHEET_URL = "https://docs.google.com/spreadsheets/d/您的試算表ID/edit" 
+        SHEET_URL = "https://docs.google.com/spreadsheets/d/1w2BDsPHHxgaz6PJhoPLXdh0UQJplA6rr42wLoLQIM9s/edit?gid=1982907342#gid=1982907342" 
         
         # 使用網址開啟 (open_by_url)
         sh = gc.open_by_url(SHEET_URL)
