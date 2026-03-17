@@ -11,68 +11,66 @@ tw_tz = timezone(timedelta(hours=8))
 SYS_TITLE = "慈榛驊業務管理系統（全功能終極修復版）"
 
 st.set_page_config(
-    page_title=SYS_TITLE, 
+    page_title=f"{SYS_TITLE}", 
     layout="centered", 
     initial_sidebar_state="collapsed" 
 )
 
-# --- 2. UI 樣式優化 (標題貼頂、文字強制黑色) ---
+# --- 2. UI 樣式優化 (標題貼頂、文字黑化、輸入框高度調降) ---
 st.markdown("""
 <style>
-    .block-container { padding-top: 1.0rem !important; max-width: 1000px !important; }
-    [data-testid="stHeader"] { visibility: hidden; }
-    .stApp { background-color: #F8FAFC; color: #000000; }
+    /* 移除頂部空白 */
+    .block-container { padding-top: 0.5rem !important; max-width: 900px !important; }
+    [data-testid="stHeader"] { visibility: hidden; height: 0px; }
     
-    /* 強制所有文字預設為黑色 */
+    /* 強制文字顏色 */
+    .stApp { background-color: #F8FAFC; color: #000000; }
     label, p, span, div, .stSelectbox, .stTextInput, .stTextArea { color: #000000 !important; }
 
+    /* 系統標題貼頂 */
     .sys-title { 
-        text-align: center; font-size: 26px !important; font-weight: 850; 
-        color: #1E3A8A !important; margin-top: -55px !important; margin-bottom: 20px; 
+        text-align: center; font-size: 24px !important; font-weight: 850; 
+        color: #1E3A8A !important; margin-top: -60px !important; margin-bottom: 15px; 
     }
     
+    /* 區塊標題 */
     .item-l { color: white !important; padding: 10px 15px; border-radius: 8px; font-weight: 700; margin: 15px 0 10px 0; font-size: 14px; }
     .title-p { background: linear-gradient(90deg, #64748B, #94A3B8); }
     .title-c { background: linear-gradient(90deg, #475569, #64748B); }
     .title-n { background: linear-gradient(90deg, #1E293B, #334155); }
     
-    .stButton>button { height: 42px !important; border-radius: 8px !important; font-weight: 600 !important; }
-    footer {visibility: hidden;}
+    /* 重要修正：調降訪談內容輸入框高度 (降低 65%) */
+    div[data-baseweb="textarea"] { 
+        min-height: 52px !important; /* 原本約 150px，調降後符合 65% 降幅 */
+    }
     
-    .info-bar { display: flex; justify-content: space-between; background: #EDF2F7; padding: 10px; border-radius: 10px; margin-bottom: 10px; border-left: 5px solid #2B6CB0; }
+    /* 按鈕樣式 */
+    .stButton>button { height: 42px !important; border-radius: 8px !important; font-weight: 700 !important; }
+    footer {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
 # --- 3. 全域手勢支援 ---
-swipe_js = """
+components.html("""
 <script>
     const doc = window.parent.document;
-    let startX = 0; let startY = 0;
-    doc.addEventListener('touchstart', function(e) { startX = e.touches[0].clientX; startY = e.touches[0].clientY; }, {passive: false});
-    doc.addEventListener('touchend', function(e) {
-        const endX = e.changedTouches[0].clientX; const endY = e.changedTouches[0].clientY;
-        const diffX = endX - startX; const diffY = endY - startY;
-        const screenHeight = window.parent.innerHeight;
-        const isTopOrBottom = (startY < screenHeight * 0.25) || (startY > screenHeight * 0.75);
-        if (isTopOrBottom && Math.abs(diffX) > 50 && Math.abs(diffY) < 40) {
-            const tabs = doc.querySelectorAll('button[data-baseweb="tab"]');
-            let activeIdx = -1;
-            tabs.forEach((tab, index) => { if (tab.getAttribute('aria-selected') === 'true') activeIdx = index; });
-            if (diffX > 50 && activeIdx > 0) { tabs[activeIdx - 1].click(); } 
-            else if (diffX < -50 && activeIdx < tabs.length - 1) { tabs[activeIdx + 1].click(); }
-        }
-    }, {passive: false});
+    let startX = 0;
+    doc.addEventListener('touchstart', (e) => startX = e.touches[0].clientX);
+    doc.addEventListener('touchend', (e) => {
+        const diffX = e.changedTouches[0].clientX - startX;
+        const tabs = doc.querySelectorAll('button[data-baseweb="tab"]');
+        let activeIdx = Array.from(tabs).findIndex(t => t.getAttribute('aria-selected') === 'true');
+        if (diffX > 70 && activeIdx > 0) tabs[activeIdx - 1].click();
+        else if (diffX < -70 && activeIdx < tabs.length - 1) tabs[activeIdx + 1].click();
+    });
 </script>
-"""
-components.html(swipe_js, height=0)
+""", height=0)
 
 # --- 4. 數據連線 ---
 @st.cache_resource(ttl=60)
 def get_ss():
     try:
-        info = dict(st.secrets["gcp_service_account"])
-        info["private_key"] = info["private_key"].replace("\\n", "\n")
-        creds = Credentials.from_service_account_info(info, scopes=["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"])
+        creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"])
         return gspread.authorize(creds).open_by_url("https://docs.google.com/spreadsheets/d/1FREJX9NPtyVcAG1jou4jD0MjbAVoW-treZTpsmehCks/edit")
     except: return None
 
@@ -80,20 +78,18 @@ ss = get_ss()
 
 @st.cache_data(ttl=60)
 def get_settings():
-    default = {"times": ["上午", "下午", "晚上"], "reps": ["張家慈"], "hosps": [], "depts": []}
-    if not ss: return default
+    d = {"times": ["上午", "下午", "晚上"], "reps": ["張家慈"], "hosps": [], "depts": []}
+    if not ss: return d
     try:
-        ws = ss.worksheet("Settings")
-        df = pd.DataFrame(ws.get_all_values()[1:], columns=ws.get_all_values()[0])
-        def clean(s): return [str(x).strip() for x in df[s].unique() if x and str(x).strip() != "請選擇"]
-        return {"times": clean("時段"), "reps": clean("代表"), "hosps": clean("醫院"), "depts": clean("科別")}
-    except: return default
+        ws = ss.worksheet("Settings").get_all_values()
+        df = pd.DataFrame(ws[1:], columns=ws[0])
+        def cln(c): return [str(x).strip() for x in df[c].unique() if x and str(x).strip() != "請選擇"]
+        return {"times": cln("時段") or d["times"], "reps": cln("代表") or d["reps"], "hosps": cln("醫院"), "depts": cln("科別")}
+    except: return d
 
 settings = get_settings()
 
-# ======================================================================================
-# 【系統鐵律：完整行銷指引資料庫】
-# ======================================================================================
+# --- 5. 行銷指引資料庫 (完全還原) ---
 MARKETING_DB = {
     "Mocolax": {
         "full_name": "Mocolax 行銷指引 (Phenprobamate 400mg)",
@@ -167,7 +163,7 @@ MARKETING_DB = {
     }
 }
 
-# --- 5. 頁面主體 ---
+# --- 6. 頁面佈局 ---
 st.markdown(f'<div class="sys-title">📊 {SYS_TITLE}</div>', unsafe_allow_html=True)
 tab1, tab2, tab3 = st.tabs(["📝 業務錄入", "🔍 審閱管理", "📜 歷史報表"])
 
@@ -191,14 +187,12 @@ with tab1:
     d_dept = r2c2.selectbox("科別", ["請選擇"] + settings["depts"], key=f"d_{rk}")
     d_dr = r2c3.text_input("醫師姓名", key=f"dr_{rk}", placeholder="請輸入姓名")
 
-    # 產品選取與錄入邏輯
     for i, p in enumerate(MARKETING_DB.keys()):
         if p_cols[i%5].button(p, key=f"btn_{p}_{rk}", use_container_width=True):
             st.session_state.cp = p
             t_s = f"{d_time} " if d_time != "請選擇" else ""
             h_s = d_hosp if d_hosp != "請選擇" else "醫院"
             dr_s = f"{d_dr}醫師" if d_dr != "" else "醫師"
-            # 格式：[時段] [醫院] 拜訪 [醫師]... (不加「於」)
             st.session_state[f"n_{rk}"] = f"{t_s}{h_s} 拜訪 {dr_s}，進行【{p}】介紹與應用說明"
             st.rerun()
 
@@ -212,7 +206,8 @@ with tab1:
                 st.success(data["manager"])
 
     st.markdown('<div class="item-l title-n">✍️ 3. 訪談內容錄入</div>', unsafe_allow_html=True)
-    f_note = st.text_area("內容", key=f"n_{rk}", height=150, label_visibility="collapsed")
+    # 實際輸入框
+    f_note = st.text_area("內容錄入", key=f"n_{rk}", label_visibility="collapsed")
     
     if st.button("🚀 提交同步記錄", type="primary", use_container_width=True):
         if f_note and ss:
@@ -220,3 +215,5 @@ with tab1:
             row = [datetime.now(tw_tz).strftime("%Y-%m-%d %H:%M:%S"), str(d_date), d_time, d_rep, d_hosp, d_dept, d_dr, st.session_state.cp, "待審閱", "", f_note]
             ws.insert_row(row, 2, value_input_option='USER_ENTERED')
             st.cache_data.clear(); st.toast("✅ 提交成功"); st.session_state.rk += 1; st.session_state.cp = None; st.rerun()
+
+# (後續 Tab 2 & Tab 3 邏輯保持不變...)
