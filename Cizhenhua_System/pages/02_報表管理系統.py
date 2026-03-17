@@ -1,22 +1,30 @@
 import streamlit as st
 import pandas as pd
 import gspread
-# --- 補上這兩行，解決 Credentials 沒定義的問題 ---
 from google.oauth2.service_account import Credentials
-import streamlit.components.v1 as components 
+import streamlit.components.v1 as components
 
+# --- 1. 縮放鎖定 (這段必須在最前面) ---
+components.html(
+    """
+    <script>
+        var meta = document.createElement('meta');
+        meta.name = "viewport";
+        meta.content = "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0";
+        document.getElementsByTagName('head')[0].appendChild(meta);
+    </script>
+    """,
+    height=0,
 )
 
-# --- 修正後的 CSS (標題貼頂 + 移除白框 + 瘦身按鈕) ---
+# --- 2. 樣式優化 (請檢查三引號是否都有成對) ---
 st.markdown("""
 <style>
-    /* 1. 移除側邊欄白框 */
     [data-testid="stSidebar"] { background-color: #f0f2f6; }
     [data-testid="stSidebarNav"] { background-color: transparent !important; }
 
-    /* 2. 標題貼頂：消除過多空白 */
     .block-container { 
-        padding-top: 1.0rem !important; /* 縮小到 1.0 */
+        padding-top: 1.0rem !important; 
         max-width: 1300px !important; 
         margin: 0 auto !important; 
     }
@@ -24,14 +32,13 @@ st.markdown("""
     .sys-title { 
         text-align: center; font-size: 24px !important; font-weight: 850; 
         color: #1E3A8A; 
-        margin-top: -45px !important; /* 加大負值，強迫標題往上衝 */
+        margin-top: -45px !important; 
         margin-bottom: 10px !important;
         white-space: nowrap;
     }
 
-    /* 3. 產品快速選取：還原精簡，不占空間 */
     div.stButton > button {
-        height: 35px !important; /* 高度再縮小一點 */
+        height: 35px !important;
         padding: 0px 5px !important;
         border: 1px solid #d1d5db !important;
         border-radius: 6px !important;
@@ -40,14 +47,13 @@ st.markdown("""
     
     div.stButton > button p {
         white-space: nowrap !important;
-        font-size: 13px !important; /* 字體微調，確保單行 */
+        font-size: 13px !important;
     }
     
-    /* 隱藏頂部預設橫條 */
     [data-testid="stHeader"] { visibility: hidden; }
     footer { visibility: hidden; }
 </style>
-""", unsafe_allow_html=True)
+""", unsafe_allow_html=True) # <--- 檢查這行結尾括號有沒有漏掉
 
 # --- 3. 全域手勢支援 ---
 swipe_js = """
