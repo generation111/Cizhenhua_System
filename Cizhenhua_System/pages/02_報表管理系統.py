@@ -15,10 +15,10 @@ st.set_page_config(
     initial_sidebar_state="collapsed" 
 )
 
-# --- 2. UI 樣式優化 (極致扁平輸入框 + 紅色清空鈕) ---
+# --- 2. UI 樣式優化 (精準定位紅色清空鈕 + 錄入框扁平化) ---
 st.markdown("""
 <style>
-    .block-container { padding-top: 0.5rem !important; max-width: 950px !important; }
+    .block-container { padding-top: 2.5rem !important; max-width: 950px !important; }
     [data-testid="stHeader"] { visibility: visible !important; }
     
     /* 文字黑化 */
@@ -35,27 +35,27 @@ st.markdown("""
     .title-c { background: linear-gradient(90deg, #475569, #64748B); }
     .title-n { background: linear-gradient(90deg, #1E293B, #334155); }
     
-    /* 訪談內容錄入框：極致扁平 (20px) + 內邊距修正 (2px) */
+    /* 訪談內容錄入框：極致扁平 (14px) + 內邊距修正 (2px) */
     div[data-baseweb="textarea"] { 
-        min-height: 20px !important; 
+        min-height: 14px !important; 
     }
     div[data-baseweb="textarea"] textarea {
         padding: 2px !important;
         line-height: 1.2 !important;
     }
     
-    /* 提交按鈕 (藍色) */
+    /* 提交按鈕樣式 (藍色) */
     .stButton>button[kind="primary"] { 
         height: 42px !important; border-radius: 8px !important; font-weight: 700 !important;
         background-color: #2B6CB0 !important; border: none !important;
     }
     
-    /* 清空按鈕 (自定義紅色) */
-    div[data-testid="stHorizontalBlock"] div:nth-child(2) .stButton>button {
+    /* 修正：精準定位「🧹 清空」按鈕，不誤傷藥品鍵 */
+    button:has(div p:contains("🧹 清空")) {
         height: 42px !important; border-radius: 8px !important; font-weight: 700 !important;
         background-color: #E53E3E !important; color: white !important; border: none !important;
     }
-    div[data-testid="stHorizontalBlock"] div:nth-child(2) .stButton>button:hover {
+    button:has(div p:contains("🧹 清空")):hover {
         background-color: #C53030 !important; color: white !important;
     }
 </style>
@@ -158,7 +158,7 @@ MARKETING_DB = {
     }
 }
 
-# --- 5. 頁面主體 ---
+# --- 5. 頁面佈局 ---
 st.markdown(f'<div class="sys-title">📊 {SYS_TITLE}</div>', unsafe_allow_html=True)
 tab1, tab2, tab3 = st.tabs(["📝 業務錄入", "🔍 審閱管理", "📜 歷史報表"])
 
