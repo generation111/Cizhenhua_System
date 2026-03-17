@@ -18,7 +18,7 @@ st.set_page_config(
 # --- 2. UI 樣式優化 (精準定位紅色清空鈕 + 錄入框扁平化) ---
 st.markdown("""
 <style>
-    .block-container { padding-top: 3.5rem !important; max-width: 950px !important; }
+    .block-container { padding-top: 3.7rem !important; max-width: 950px !important; }
     [data-testid="stHeader"] { visibility: visible !important; }
     
     /* 文字黑化 */
@@ -40,7 +40,7 @@ st.markdown("""
         min-height: 12px !important; 
     }
     div[data-baseweb="textarea"] textarea {
-        padding: 2px !important;
+        padding: 0.5px !important;
         line-height: 0.8 !important;
     }
     
