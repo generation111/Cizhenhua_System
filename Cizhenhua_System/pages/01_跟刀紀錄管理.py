@@ -16,7 +16,7 @@ st.set_page_config(page_title=f"{SYS_TITLE}", layout="wide", initial_sidebar_sta
 st.markdown("""
 <style>
     /* 放寬頂部邊距，避免標題被切掉 */
-    .block-container { padding-top: 5rem !important; padding-bottom: 0rem !important; }
+    .block-container { padding-top: 4rem !important; padding-bottom: 0rem !important; }
     
     .sys-title { 
         text-align: center; 
