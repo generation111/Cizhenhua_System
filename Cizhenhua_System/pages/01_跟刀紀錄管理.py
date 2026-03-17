@@ -43,36 +43,38 @@ def get_ss():
         if "private_key_base64" in creds_info:
             b64_str = creds_info["private_key_base64"]
             
-            # 2. 強力清洗：只留下合法 Base64 字元
-            b64_clean = re.sub(r'[^A-Za-z0-9+/=]', '', b64_str)
+            # --- 超級濾網：只保留 Base64 絕對合法的字元 ---
+            # 徹底剔除所有可能導致 InvalidByte 的空格、引號、反斜線或隱形字元
+            b64_clean = "".join(re.findall(r'[A-Za-z0-9+/=]', b64_str))
             
-            # 3. 解碼並處理可能被重複轉義的換行
-            raw_decoded = base64.b64decode(b64_clean).decode("latin-1")
+            # 2. 解碼並轉換為文字（使用 latin-1 確保不報編碼錯）
+            decoded_text = base64.b64decode(b64_clean).decode("latin-1")
             
-            # 4. 【核心修復】手動重建標準 PEM 結構
-            # 移除所有已存在的標頭、結尾、換行與引號，只留核心內容字串
-            core_key = raw_decoded.replace("-----BEGIN PRIVATE KEY-----", "") \
-                                  .replace("-----END PRIVATE KEY-----", "") \
-                                  .replace("\\n", "").replace("\n", "") \
-                                  .replace('"', '').replace(" ", "").strip()
+            # 3. 提取核心金鑰（移除所有已存在的標頭標尾、換行與轉義字元）
+            core_content = decoded_text.replace("-----BEGIN PRIVATE KEY-----", "") \
+                                       .replace("-----END PRIVATE KEY-----", "") \
+                                       .replace("\\n", "").replace("\n", "") \
+                                       .replace("\r", "").replace('"', '') \
+                                       .replace(" ", "").strip()
             
-            # 強制每 64 個字元換一行（這是 PEM 標準格式）
+            # 4. 重新手工組裝標準 PEM 格式 (每 64 字元換行)
             formatted_key = "-----BEGIN PRIVATE KEY-----\n"
-            for i in range(0, len(core_key), 64):
-                formatted_key += core_key[i:i+64] + "\n"
+            for i in range(0, len(core_content), 64):
+                formatted_key += core_content[i:i+64] + "\n"
             formatted_key += "-----END PRIVATE KEY-----\n"
             
-            # 5. 塞回 Google 要求的標籤
+            # 5. 強制塞回 Google 規定的標籤
             creds_info["private_key"] = formatted_key
             
         scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+        
+        # 6. 執行驗證
         creds = Credentials.from_service_account_info(creds_info, scopes=scope)
         return gspread.authorize(creds).open_by_key(SPREADSHEET_ID)
         
     except Exception as e:
         st.error(f"❌ 資料庫連線失敗: {str(e)}")
         return None
-
 ss = get_ss()
 
 @st.cache_data(ttl=60)
