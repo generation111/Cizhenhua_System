@@ -32,6 +32,7 @@ st.markdown("""
 # --- 3. 數據連線 ---
 
 import base64
+import re
 
 @st.cache_resource(ttl=60)
 def get_ss():
@@ -39,17 +40,20 @@ def get_ss():
         creds_info = st.secrets["gcp_service_account"].to_dict()
         
         if "private_key_base64" in creds_info:
-            b64_str = creds_info["private_key_base64"]
+            # 1. 抓取 Base64 字串並「暴力清洗」
+            # 只保留 Base64 合法字元 (A-Z, a-z, 0-9, +, /, =)
+            b64_raw = creds_info["private_key_base64"]
+            b64_clean = re.sub(r'[^A-Za-z0-9+/=]', '', b64_raw)
             
-            # 1. 先解碼成原始字節
-            decoded_bytes = base64.b64decode(b64_str)
+            # 2. 解碼
+            decoded_bytes = base64.b64decode(b64_clean)
             
-            # 2. 核心修正：使用 'latin-1' 先讀取，然後把字串中的 \\n 替換回真正的換行
-            # 這樣可以避開 utf-8 無法解析特殊字元的問題
-            raw_key_str = decoded_bytes.decode("latin-1")
-            fixed_key = raw_key_str.replace("\\n", "\n").replace('"', '').strip()
+            # 3. 將還原後的 PEM 內容進行第二次清洗
+            # 確保換行符號正確，並移除可能夾帶的雙引號
+            key_text = decoded_bytes.decode("utf-8").replace("\\n", "\n").strip()
+            key_text = key_text.replace('"', '') 
             
-            creds_info["private_key"] = fixed_key
+            creds_info["private_key"] = key_text
             
         scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
         creds = Credentials.from_service_account_info(creds_info, scopes=scope)
