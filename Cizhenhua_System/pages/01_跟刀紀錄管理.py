@@ -31,17 +31,19 @@ st.markdown("""
 
 # --- 3. 數據連線 ---
 
+import base64
+
 @st.cache_resource(ttl=60)
 def get_ss():
     try:
-        # 1. 取得原始資訊
+        # 取得 secrets 並轉為字典
         creds_info = st.secrets["gcp_service_account"].to_dict()
         
-        # 2. 強制修復金鑰格式 (去除前後空格並處理換行)
-        if "private_key" in creds_info:
-            raw_key = creds_info["private_key"]
-            # 移除所有隱形空格並確保換行符號正確
-            creds_info["private_key"] = raw_key.replace("\\n", "\n").strip()
+        # 關鍵：解碼 Base64
+        if "private_key_base64" in creds_info:
+            b64_str = creds_info["private_key_base64"]
+            # 解碼後去除可能的空格
+            creds_info["private_key"] = base64.b64decode(b64_str).decode("utf-8").strip()
             
         scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
         creds = Credentials.from_service_account_info(creds_info, scopes=scope)
