@@ -43,24 +43,21 @@ def get_ss():
 
 ss = get_ss()
 
-@st.cache_data(ttl=600)
-def get_options():
-    default_opt = {"price": ["無資料"], "prod": ["無資料"], "hosp": ["無資料"], "rep": ["無資料"], "dept": ["無資料"], "blood": ["無資料"]}
-    if not ss: return default_opt
+@st.cache_resource(ttl=60)
+def get_ss():
     try:
-        ws_opt = ss.worksheet("Settings") # 這裡已配合您的 Settings 分頁
-        df_opt = pd.DataFrame(ws_opt.get_all_records())
-        return {
-            "price": df_opt["批價內容"].dropna().unique().tolist(),
-            "prod": df_opt["產品項目"].dropna().unique().tolist(),
-            "hosp": df_opt["使用醫院"].dropna().unique().tolist(),
-            "rep": df_opt["業務代表"].dropna().unique().tolist(),
-            "dept": df_opt["使用科別"].dropna().unique().tolist() if "使用科別" in df_opt.columns else ["無資料"],
-            "blood": df_opt["抽血人員"].dropna().unique().tolist() if "抽血人員" in df_opt.columns else ["無資料"]
-        }
+        creds_info = st.secrets["gcp_service_account"].to_dict()
+        
+        # 加入這一行：將可能出錯的雙斜槓 \\n 轉回真正的換行符
+        if "private_key" in creds_info:
+            creds_info["private_key"] = creds_info["private_key"].replace("\\n", "\n")
+            
+        scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+        creds = Credentials.from_service_account_info(creds_info, scopes=scope)
+        return gspread.authorize(creds).open_by_key(SPREADSHEET_ID)
     except Exception as e:
-        st.warning(f"⚠️ 設定檔讀取異常: {e}")
-        return default_opt
+        st.error(f"❌ 連線失敗: {str(e)}")
+        return None
 
 OPT = get_options()
 
