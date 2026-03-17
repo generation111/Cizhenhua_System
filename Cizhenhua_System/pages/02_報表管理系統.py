@@ -14,91 +14,53 @@ components.html(
     height=0,
 )
 
-# --- 修改 CSS 樣式區塊 ---
+# --- 修正後的 CSS 樣式區塊 (回歸精簡) ---
 st.markdown("""
 <style>
-    /* 1. 核心修正：鎖定電腦版最大寬度為 1200px 並置中 */
-    [data-testid="stAppViewContainer"] > section:nth-child(2) > div:nth-child(1) {
-        max-width: 1200px !important;
-        margin: 0 auto !important;
-    }
+    /* 1. 移除側邊欄多餘白框 & 調整整體背景 */
+    [data-testid="stSidebar"] { background-color: #f0f2f6; }
+    [data-testid="stSidebarNav"] { background-color: transparent !important; }
     
-    /* 2. 讓整體背景顏色與內容區塊有所區隔 (選配，增加層次感) */
-    .stApp {
-        background-color: #F0F2F6;
-    }
-    
-    [data-testid="stVerticalBlock"] {
-        background-color: white;
-        padding: 20px;
-        border-radius: 15px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-    }
-
-    /* 3. 原有的標題與元件優化 */
+    /* 2. 標題貼頂：消除上方多餘空白 */
     .block-container { 
-        padding-top: 2rem !important; 
+        padding-top: 1.5rem !important; 
+        max-width: 1300px !important; 
+        margin: 0 auto !important; 
     }
+    
     .sys-title { 
         text-align: center; font-size: 24px !important; font-weight: 850; 
-        color: #1E3A8A; margin-bottom: 20px !important;
-    }
-</style>
-""", unsafe_allow_html=True)
-import streamlit as st
-import pandas as pd
-import gspread
-from google.oauth2.service_account import Credentials
-from datetime import datetime, timedelta, timezone
-import streamlit.components.v1 as components
-import time
-
-# --- 1. 核心設定 ---
-tw_tz = timezone(timedelta(hours=8))
-SYS_TITLE = "慈榛驊業務報表管理系統"
-
-st.set_page_config(
-    page_title=f"{SYS_TITLE}", 
-    layout="centered", 
-    initial_sidebar_state="collapsed" 
-)
-
-# --- 2. 側邊欄與 UI 樣式優化 ---
-# --- 修改 CSS 樣式區塊 ---
-# --- 修正後的 CSS 樣式區塊 ---
-st.markdown("""
-<style>
-    /* 1. 調整整體內容寬度：給予足夠空間讓 5 欄按鈕伸展 */
-    [data-testid="stAppViewContainer"] > section:nth-child(2) > div:nth-child(1) {
-        max-width: 1300px !important; /* 從 1200 稍微放寬到 1300 */
-        margin: 0 auto !important;
+        color: #1E3A8A; margin-top: -30px !important; margin-bottom: 15px !important;
+        white-space: nowrap;
     }
 
-    /* 2. 解決按鈕文字縮成兩行：強制單行並微調字體 */
+    /* 3. 產品快速選取：還原精簡外框，強制單行不占空間 */
     div.stButton > button {
-        padding: 0px 2px !important; /* 縮小左右內距 */
-        min-height: 45px !important;
+        height: 38px !important; /* 縮小按鈕高度 */
+        padding: 0px 5px !important;
+        border: 1px solid #d1d5db !important; /* 纖細邊框 */
+        border-radius: 8px !important;
+        background-color: white !important;
     }
     
     div.stButton > button p {
-        white-space: nowrap !important; /* 強制不換行 */
-        font-size: 14px !important;    /* 稍微縮小字體確保裝得下 */
-        overflow: hidden;
-        text-overflow: clip;           /* 就算超出一點點也不要變兩行 */
+        white-space: nowrap !important;
+        font-size: 14px !important;
+        margin: 0 !important;
     }
 
-    /* 3. 解決標題太靠頂部與側邊欄空白感 */
-    .block-container { 
-        padding-top: 2.5rem !important; 
+    /* 4. 區塊標題小型化 */
+    .stMarkdown h3 { 
+        font-size: 16px !important; 
+        margin-bottom: 5px !important; 
+        padding-top: 5px !important;
     }
-    
-    /* 4. 側邊欄優化：縮小側邊欄按鈕的間距，減少左側空洞感 */
-    [data-testid="stSidebarNav"] {
-        padding-top: 20px !important;
-    }
+
+    /* 隱藏預設元素 */
+    footer {visibility: hidden;}
+    [data-testid="stHeader"] {background: rgba(0,0,0,0);}
 </style>
 """, unsafe_allow_html=True)
-
 
 # --- 3. 全域手勢支援 ---
 swipe_js = """
