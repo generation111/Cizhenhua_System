@@ -10,13 +10,14 @@ tw_tz = timezone(timedelta(hours=8))
 SYS_TITLE = "2026 年度跟刀紀錄管理系統"
 SPREADSHEET_ID = "1w2BDsPHHxgaz6PJhoPLXdh0UQJplA6rr42wLoLQIM9s"
 
+# 設定頁面：標題與佈局
 st.set_page_config(page_title=f"{SYS_TITLE}", layout="wide", initial_sidebar_state="collapsed")
 
-# --- 2. 樣式優化 ---
+# --- 2. 樣式優化 (標題貼齊上緣) ---
 st.markdown("""
 <style>
-    .block-container { padding-top: 2rem !important; }
-    .sys-title { text-align: center; font-size: 26px !important; font-weight: 850; color: #1E3A8A; margin-bottom: 15px !important; }
+    .block-container { padding-top: 1rem !important; }
+    .sys-title { text-align: center; font-size: 26px !important; font-weight: 850; color: #1E3A8A; margin-bottom: 10px !important; }
     hr { display: none !important; }
     div[data-testid="column"] { display: flex; align-items: center; justify-content: center; }
     div[data-testid="stTextArea"] label { display: none !important; }
@@ -26,16 +27,18 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. 數據連線 ---
+# --- 3. 數據連線邏輯 ---
+
 @st.cache_resource(ttl=60)
 def get_ss():
+    """建立 Google Sheets 連線"""
     try:
-        # 取得 secrets 字典
+        # 1. 取得 secrets 字典並轉為可編輯字典
         creds_info = st.secrets["gcp_service_account"].to_dict()
         
-        # 強制修正換行符號，防止 ASN.1 解析出錯
+        # 2. 強制修正密鑰換行符號（徹底解決 ASN.1 / Padding 錯誤）
         if "private_key" in creds_info:
-            creds_info["private_key"] = creds_info["private_key"].replace("\\n", "\n")
+            creds_info["private_key"] = creds_info["private_key"].replace("\\n", "\n").strip()
             
         scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
         creds = Credentials.from_service_account_info(creds_info, scopes=scope)
@@ -44,29 +47,46 @@ def get_ss():
         st.error(f"❌ 連線失敗：{str(e)}")
         return None
 
+# 初始化連線物件
 ss = get_ss()
 
-@st.cache_resource(ttl=60)
-def get_ss():
-    try:
-        creds_info = st.secrets["gcp_service_account"].to_dict()
+@st.cache_data(ttl=600)
+def get_options():
+    """從 Settings 分頁抓取下拉清單資料"""
+    # 預設值（避免連線失敗時 OPT 未定義）
+    default_opt = {
+        "price": ["載入失敗"], "prod": ["載入失敗"], "hosp": ["載入失敗"], 
+        "rep": ["載入失敗"], "dept": ["載入失敗"], "blood": ["載入失敗"]
+    }
+    
+    if ss is None:
+        return default_opt
         
-        # 加入這一行：將可能出錯的雙斜槓 \\n 轉回真正的換行符
-        if "private_key" in creds_info:
-            creds_info["private_key"] = creds_info["private_key"].replace("\\n", "\n")
-            
-        scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-        creds = Credentials.from_service_account_info(creds_info, scopes=scope)
-        return gspread.authorize(creds).open_by_key(SPREADSHEET_ID)
+    try:
+        # 開啟 Settings 分頁並轉換為 DataFrame
+        ws_opt = ss.worksheet("Settings")
+        df_opt = pd.DataFrame(ws_opt.get_all_records())
+        
+        # 清洗資料並建立字典
+        return {
+            "price": df_opt["批價內容"].replace('', pd.NA).dropna().unique().tolist() if "批價內容" in df_opt.columns else ["欄位錯誤"],
+            "prod": df_opt["產品項目"].replace('', pd.NA).dropna().unique().tolist() if "產品項目" in df_opt.columns else ["欄位錯誤"],
+            "hosp": df_opt["使用醫院"].replace('', pd.NA).dropna().unique().tolist() if "使用醫院" in df_opt.columns else ["欄位錯誤"],
+            "rep": df_opt["業務代表"].replace('', pd.NA).dropna().unique().tolist() if "業務代表" in df_opt.columns else ["欄位錯誤"]
+        }
     except Exception as e:
-        st.error(f"❌ 連線失敗: {str(e)}")
-        return None
+        st.warning(f"⚠️ 設定讀取異常: {e}")
+        return default_opt
+
+# --- 關鍵步驟：建立 OPT 字典供介面使用 ---
 OPT = get_options()
+
 # --- 4. 介面佈局 ---
 st.markdown(f'<div class="sys-title">📋 {SYS_TITLE}</div>', unsafe_allow_html=True)
 tab1, tab2, tab3 = st.tabs(["🖋️ 資料登錄", "📊 歷史紀錄", "🔍 預購追蹤"])
 
 with tab1:
+    # 使用 session_state 確保提交後頁面重置
     if "rk_v11" not in st.session_state: st.session_state.rk_v11 = 0
     rk = st.session_state.rk_v11
     
@@ -91,15 +111,21 @@ with tab1:
     # 底欄
     bc1, bc2, bc3 = st.columns([0.3, 3.2, 1])
     with bc1: st.write("**備註**")
-    with bc2: d_memo = st.text_area("", key=f"me_{rk}", height=40)
+    with bc2: d_memo = bc2.text_area("", key=f"me_{rk}", height=40)
     with bc3:
         if st.button("🚀 提交數據", key="submit_btn"):
             if ss:
                 try:
                     ws_res = ss.worksheet("回應試算表")
-                    ws_res.append_row([str(d_date), d_price, d_hosp, d_dr, d_prod, d_spec, d_pname, d_pid, d_memo], value_input_option='USER_ENTERED')
+                    ws_res.append_row([
+                        str(d_date), d_price, d_hosp, d_dr, d_prod, 
+                        d_spec, d_pname, d_pid, d_memo
+                    ], value_input_option='USER_ENTERED')
                     st.toast("✅ 存檔成功")
                     time.sleep(1)
                     st.session_state.rk_v11 += 1
                     st.rerun()
-                except: st.error("寫入失敗")
+                except Exception as e:
+                    st.error(f"寫入失敗：{e}")
+            else:
+                st.error("連線未建立，無法存檔")
