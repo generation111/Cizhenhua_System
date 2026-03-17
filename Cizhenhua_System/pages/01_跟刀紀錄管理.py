@@ -39,32 +39,51 @@ def get_ss():
 
 ss = get_ss()
 
-# --- 修正 get_options 函數內的名稱 ---
+# --- 修正後的連線與讀取邏輯 ---
+
+@st.cache_resource(ttl=60)
+def get_ss():
+    try:
+        scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+        # 確保 secrets 欄位名稱與此一致
+        creds_info = st.secrets["gcp_service_account"]
+        creds = Credentials.from_service_account_info(creds_info, scopes=scope)
+        return gspread.authorize(creds).open_by_key(SPREADSHEET_ID)
+    except Exception as e:
+        # 如果連線建立失敗，直接在畫面上印出原因
+        st.error(f"❌ 無法建立 Google 連線，請檢查 Secrets 設定。原因：{str(e)}")
+        return None
+
+# 重新獲取連線物件
+ss = get_ss()
+
 @st.cache_data(ttl=600)
 def get_options():
-    # ... (前段預設值略)
+    default_opt = {
+        "price": ["載入中"], "prod": ["載入中"], "hosp": ["載入中"], 
+        "rep": ["載入中"], "dept": ["載入中"], "blood": ["載入中"]
+    }
+    
+    # 關鍵：如果 ss 是 None，就不執行後面的 worksheet 動作
+    if ss is None: 
+        return default_opt
+        
     try:
-        # 將 "設定檔" 改為 "Settings"
+        # 依照您的反饋，將分頁改為 "Settings"
         ws_opt = ss.worksheet("Settings") 
+        df_opt = pd.DataFrame(ws_opt.get_all_records())
         
-        opt_data = ws_opt.get_all_records()
-        df_opt = pd.DataFrame(opt_data)
-        
-        # 請同時確認您的試算表欄位名稱（第一列）是否為中文，若也是英文則需對應修改
         return {
             "price": df_opt["批價內容"].dropna().unique().tolist(),
             "prod": df_opt["產品項目"].dropna().unique().tolist(),
             "hosp": df_opt["使用醫院"].dropna().unique().tolist(),
             "rep": df_opt["業務代表"].dropna().unique().tolist(),
-            # 若試算表沒有「使用科別」等欄位，這裡會安全回傳「載入中」
             "dept": df_opt["使用科別"].dropna().unique().tolist() if "使用科別" in df_opt.columns else ["載入中"],
             "blood": df_opt["抽血人員"].dropna().unique().tolist() if "抽血人員" in df_opt.columns else ["載入中"]
         }
     except Exception as e:
-        # 建議加入這行，如果還是載入中，它會顯示具體是哪個欄位名稱對不起來
-        st.error(f"⚠️ 讀取失敗詳細原因：{str(e)}")
+        st.error(f"⚠️ Settings 分頁讀取失敗：{str(e)}")
         return default_opt
-
 
 OPT = get_options()
 
