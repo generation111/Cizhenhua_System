@@ -81,28 +81,51 @@ def get_ss():
 
 ss = get_ss()
 
-@st.cache_data(ttl=10)
+@st.cache_data(ttl=600)
 def get_options():
-    """從 Settings 工作表抓取所有選單"""
-    if not ss: return {}, []
-    try:
-        ws = ss.worksheet("Settings")
-        data = ws.get_all_values()
-        df = pd.DataFrame(data[1:], columns=[str(h).strip() for h in data[0]])
+    """
+    從 Google Sheets 讀取選單設定值，並確保回傳格式為字典 (dict)
+    """
+    # 預設值：防止讀取失敗時程式崩潰
+    default_opt = {
+        "price": ["無資料"],
+        "prod": ["無資料"],
+        "hosp": ["無資料"],
+        "rep": ["無資料"]
+    }
+    
+    if not ss:
+        return default_opt
         
-        # 動態對應
-        opts = {
-            "price": [x for x in df["批價內容"].dropna().unique() if x],
-            "hosp": [x for x in df["使用醫院"].dropna().unique() if x],
-            "dept": [x for x in df["使用科別"].dropna().unique() if x],
-            "prod": [x for x in df["產品項目"].dropna().unique() if x],
-            "loc": [x for x in df["使用地點"].dropna().unique() if x],
-            "blood": [x for x in df["抽血人員"].dropna().unique() if x],
-            "rep": [x for x in df["跟刀(操作)人員"].dropna().unique() if x]
+    try:
+        # 1. 開啟「設定檔」工作表 (請確認您的 Google Sheets 分頁名稱正確)
+        ws_opt = ss.worksheet("設定檔")
+        opt_data = ws_opt.get_all_records()
+        df_opt = pd.DataFrame(opt_data)
+        
+        # 2. 轉換為字典格式，並移除空值 (NaN)
+        # 假設您的工作表欄位名稱分別為：批價內容, 產品項目, 使用醫院, 業務代表
+        opt_dict = {
+            "price": df_opt["批價內容"].dropna().unique().tolist(),
+            "prod": df_opt["產品項目"].dropna().unique().tolist(),
+            "hosp": df_opt["使用醫院"].dropna().unique().tolist(),
+            "rep": df_opt["業務代表"].dropna().unique().tolist()
         }
-        return opts
-    except:
-        return {}, []
+        
+        # 重要：確保回傳的是一個單一的字典物件
+        return opt_dict
+
+    except gspread.exceptions.WorksheetNotFound:
+        st.error("❌ 找不到「設定檔」分頁，請檢查 Google Sheets 設定。")
+        return default_opt
+    except Exception as e:
+        # 顯示具體錯誤，例如某個欄位名稱不存在
+        st.error(f"⚠️ 設定檔讀取異常: {str(e)}")
+        return default_opt
+
+# --- 主程式呼叫方式 ---
+OPT = get_options()
+
 
 # 讀取選單
 OPT = get_options()
