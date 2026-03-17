@@ -18,7 +18,7 @@ st.set_page_config(
 # --- 2. UI 樣式優化 (精準定位紅色清空鈕 + 錄入框扁平化) ---
 st.markdown("""
 <style>
-    .block-container { padding-top: 2.5rem !important; max-width: 950px !important; }
+    .block-container { padding-top: 3.2rem !important; max-width: 950px !important; }
     [data-testid="stHeader"] { visibility: visible !important; }
     
     /* 文字黑化 */
@@ -35,13 +35,13 @@ st.markdown("""
     .title-c { background: linear-gradient(90deg, #475569, #64748B); }
     .title-n { background: linear-gradient(90deg, #1E293B, #334155); }
     
-    /* 訪談內容錄入框：極致扁平 (14px) + 內邊距修正 (2px) */
+    /* 訪談內容錄入框：極致扁平 (12px) + 內邊距修正 (1px) */
     div[data-baseweb="textarea"] { 
-        min-height: 14px !important; 
+        min-height: 12px !important; 
     }
     div[data-baseweb="textarea"] textarea {
         padding: 2px !important;
-        line-height: 1.2 !important;
+        line-height: 0.8 !important;
     }
     
     /* 提交按鈕樣式 (藍色) */
