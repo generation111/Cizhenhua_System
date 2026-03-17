@@ -20,8 +20,8 @@ st.set_page_config(
 st.markdown("""
 <style>
     /* 移除頂部空白 */
-    .block-container { padding-top: 0.5rem !important; max-width: 900px !important; }
-    [data-testid="stHeader"] { visibility: hidden; height: 0px; }
+    .block-container { padding-top: 2.5rem !important; max-width: 900px !important; }
+    [data-testid="stHeader"] { visibility: hidden; height: 10px; }
     
     /* 強制文字顏色 */
     .stApp { background-color: #F8FAFC; color: #000000; }
