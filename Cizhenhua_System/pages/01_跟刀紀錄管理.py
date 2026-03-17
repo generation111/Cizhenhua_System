@@ -123,9 +123,16 @@ with tab1:
     
     # 第二排
     c4, c5, c6 = st.columns(3)
-    d_price = c4.selectbox("批價內容", OPT.get("price", ["載入中"]), key=f"pr_{rk}")
-    d_prod = c5.selectbox("產品項目", OPT.get("prod", ["載入中"]), key=f"pd_{rk}")
-    d_pname = c6.text_input("病人名", key=f"pn_{rk}")
+   # 建議將第 126-128 行改為這種寫法，增加檢查機制
+if isinstance(OPT, dict):
+    d_price = c4.selectbox("批價內容", OPT.get("price", ["載入中"]), key=f"price_{rk}")
+    d_prod = c5.selectbox("產品項目", OPT.get("prod", ["載入中"]), key=f"prod_{rk}")
+else:
+    # 如果 OPT 意外變成 tuple，顯示警告並給予預設值
+    st.error("設定檔格式錯誤，請檢查資料庫連線")
+    d_price = c4.selectbox("批價內容", ["錯誤"], key=f"price_{rk}")
+    d_prod = c5.selectbox("產品項目", ["錯誤"], key=f"prod_{rk}")
+
     
     # 第三排
     c7, c8, c9 = st.columns(3)
