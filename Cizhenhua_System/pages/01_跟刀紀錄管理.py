@@ -47,7 +47,7 @@ def get_options():
     }
     if not ss: return default_opt
     try:
-        ws_opt = ss.worksheet("設定檔")
+        ws_opt = ss.worksheet("Settings")
         df_opt = pd.DataFrame(ws_opt.get_all_records())
         return {
             "price": df_opt["批價內容"].dropna().unique().tolist(),
