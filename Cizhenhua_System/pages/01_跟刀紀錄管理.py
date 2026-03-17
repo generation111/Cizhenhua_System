@@ -31,13 +31,10 @@ st.markdown("""
 
 @st.cache_resource(ttl=60)
 def get_ss():
-    """建立 Google Sheets 連線"""
     try:
-        # 1. 取得 secrets 字典並轉為可編輯字典
         creds_info = st.secrets["gcp_service_account"].to_dict()
-        
-        # 2. 強制修正密鑰換行符號（徹底解決 ASN.1 / Padding 錯誤）
         if "private_key" in creds_info:
+            # 關鍵修正：將雙斜槓轉回換行，並清除首尾空白
             creds_info["private_key"] = creds_info["private_key"].replace("\\n", "\n").strip()
             
         scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
