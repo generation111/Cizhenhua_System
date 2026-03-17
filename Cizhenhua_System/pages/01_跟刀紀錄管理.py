@@ -46,7 +46,8 @@ def get_ss():
             raw_key = creds_info["private_key"]
             
             # --- 核心修復：徹底重建 PEM 格式 ---
-            # 1. 把所有內容連成一條長線，移除所有換行、標頭、結尾、空格和引號
+            # 1. 移除標頭、結尾、物理斜槓 \\n、換行、空格和引號，只留核心內容
+            # 這樣可以確保那個出錯的 "=" 如果是不正常的，會被重新定位或處理
             core_content = raw_key.replace("-----BEGIN PRIVATE KEY-----", "") \
                                   .replace("-----END PRIVATE KEY-----", "") \
                                   .replace("\\n", "").replace("\n", "") \
@@ -60,18 +61,18 @@ def get_ss():
                 if line:
                     formatted_key += line + "\n"
             
-            # 確保最後一行有換行，再接結尾
+            # 確保最後接上正確的結尾
             if not formatted_key.endswith("\n"):
                 formatted_key += "\n"
             formatted_key += "-----END PRIVATE KEY-----\n"
             
-            # 3. 把修好後的金鑰塞回去
+            # 3. 把修好後的金鑰塞回 creds_info 字典
             creds_info["private_key"] = formatted_key
             
         scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-        creds = Credentials.from_service_account_info(creds_info, scopes=scope)
         
-        # 請確保 SPREADSHEET_ID 已經定義
+        # 4. 驗證並連線
+        creds = Credentials.from_service_account_info(creds_info, scopes=scope)
         return gspread.authorize(creds).open_by_key(SPREADSHEET_ID)
         
     except Exception as e:
