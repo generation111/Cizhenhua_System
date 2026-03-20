@@ -15,7 +15,7 @@ st.set_page_config(page_title=f"{SYS_TITLE}", layout="centered", initial_sidebar
 # --- 2. 樣式優化 ---
 st.markdown("""
 <style>
-    .block-container { padding-top: 3.8rem !important; padding-bottom: 1rem !important; }
+    .block-container { padding-top: 4.5rem !important; padding-bottom: 1rem !important; }
     .sys-title { 
         text-align: center; 
         font-size: 26px !important; 
