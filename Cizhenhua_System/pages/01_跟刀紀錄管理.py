@@ -12,17 +12,17 @@ SPREADSHEET_ID = "1w2BDsPHHxgaz6PJhoPLXdh0UQJplA6rr42wLoLQIM9s"
 
 st.set_page_config(page_title=f"{SYS_TITLE}", layout="centered", initial_sidebar_state="collapsed")
 
-# --- 2. 樣式優化 ---
+# --- 2. 樣式優化 (標題貼頂 + 預購高亮) ---
 st.markdown("""
 <style>
-    .block-container { padding-top: 3.5rem !important; padding-bottom: 0.2rem !important; }
+    .block-container { padding-top: 3.8rem !important; padding-bottom: 1rem !important; }
     .sys-title { 
         text-align: center; 
         font-size: 26px !important; 
         font-weight: 850; 
         color: #1E3A8A; 
-        margin-top: -10px !important; 
-        margin-bottom: 25px !important;
+        margin-top: -30px !important; 
+        margin-bottom: 20px !important;
         white-space: nowrap; 
     }
     hr { display: none !important; }
@@ -31,12 +31,19 @@ st.markdown("""
     div[data-testid="stTextArea"] textarea { height: 40px !important; min-height: 40px !important; padding: 8px !important; }
     div.stButton > button { height: 40px !important; width: 100% !important; font-weight: bold !important; border: 2px solid #1E3A8A !important; }
     footer {visibility: hidden;}
-    /* 表格字體微調 */
-    .stDataFrame { font-size: 12px !important; }
+    
+    /* 預購表格專用樣式 */
+    .preorder-box {
+        background-color: #FFF3E0;
+        border-left: 5px solid #FF9800;
+        padding: 10px;
+        margin-bottom: 10px;
+        border-radius: 5px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. 數據連線 ---
+# --- 3. 數據連線核心 ---
 @st.cache_resource(ttl=60)
 def get_ss():
     try:
@@ -51,6 +58,19 @@ def get_ss():
         return None
 
 ss = get_ss()
+
+@st.cache_data(ttl=60)
+def fetch_all_data():
+    """統一抓取回應試算表數據"""
+    if not ss: return pd.DataFrame()
+    try:
+        ws = ss.worksheet("回應試算表")
+        data = ws.get_all_values()
+        if len(data) > 1:
+            return pd.DataFrame(data[1:], columns=data[0])
+        return pd.DataFrame()
+    except:
+        return pd.DataFrame()
 
 @st.cache_data(ttl=60)
 def get_options():
@@ -85,7 +105,7 @@ with tab1:
     c1, c2, c3 = st.columns(3)
     d_date = c1.date_input("使用日期", value=datetime.now(tw_tz).date(), key=f"d_{rk}")
     d_dr = c2.text_input("醫師姓名", key=f"dr_{rk}")
-    d_content = c3.text_input("產品內容(含預購)", key=f"cn_{rk}")
+    d_content = c3.text_input("產品內容(含預購)", key=f"cn_{rk}", placeholder="若有預購請註明")
     
     c4, c5, c6 = st.columns(3)
     d_price = c4.selectbox("批價內容", OPT.get("price"), key=f"pr_{rk}")
@@ -120,40 +140,41 @@ with tab1:
                     st.toast("✅ 資料已成功存檔")
                     time.sleep(1)
                     st.session_state.rk_v11 += 1
-                    st.cache_data.clear() # 提交後清除快取以利同步
+                    st.cache_data.clear() 
                     st.rerun()
                 except Exception as e: st.error(f"寫入失敗: {e}")
 
 # --- Tab 2: 歷史紀錄 ---
 with tab2:
-    st.subheader(" 跟刀紀錄 (Top 50)")
-    if ss:
-        try:
-            ws_res = ss.worksheet("回應試算表")
-            all_data = ws_res.get_all_values()
-            if len(all_data) > 1:
-                df_history = pd.DataFrame(all_data[1:], columns=all_data[0])
-                # 倒序顯示，讓最新資料在上面
-                st.dataframe(df_history.iloc[::-1].head(50), use_container_width=True, hide_index=True)
-            else:
-                st.info("目前尚無任何紀錄。")
-        except Exception as e:
-            st.error(f"讀取紀錄失敗: {e}")
-    
-    if st.button("🔄 重新整理資料", key="refresh_data"):
-        st.cache_data.clear()
-        st.rerun()
+    df_history = fetch_all_data()
+    if not df_history.empty:
+        st.subheader("📋 最近 50 筆紀錄")
+        st.dataframe(df_history.iloc[::-1].head(50), use_container_width=True, hide_index=True)
+        if st.button("🔄 重新整理歷史", key="refresh_h"):
+            st.cache_data.clear()
+            st.rerun()
+    else:
+        st.info("尚無紀錄或資料讀取中...")
 
-# --- Tab 3: 預購追蹤 ---
+# --- Tab 3: 預購追蹤 (與 Google Sheets 連動) ---
 with tab3:
-    st.info("💡 此功能連動「產品內容(含預購)」欄位，篩選尚未沖銷之項目。")
-    if ss:
-        try:
-            ws_res = ss.worksheet("回應試算表")
-            all_data = ws_res.get_all_values()
-            df_all = pd.DataFrame(all_data[1:], columns=all_data[0])
-            # 簡單篩選包含「預購」字眼的紀錄
-            df_preorder = df_all[df_all['產品內容(含預購)'].str.contains('預購', na=False)]
-            st.dataframe(df_preorder.iloc[::-1], use_container_width=True, hide_index=True)
-        except:
-            st.warning("暫無預購相關數據。")
+    st.markdown('<div class="preorder-box">🔍 <b>系統說明：</b>本頁面自動篩選「產品內容(含預購)」欄位中包含「預購」二字的歷史紀錄。</div>', unsafe_allow_html=True)
+    
+    df_all = fetch_all_data()
+    if not df_all.empty:
+        # 關鍵連動：篩選包含「預購」字眼的資料列
+        # 這裡會檢查該欄位，不論是大寫、小寫或中文預購都會被抓出來
+        df_pre = df_all[df_all['產品內容(含預購)'].str.contains('預購|PREORDER', case=False, na=False)]
+        
+        if not df_pre.empty:
+            # 依日期倒序排列
+            st.dataframe(df_pre.iloc[::-1], use_container_width=True, hide_index=True)
+            st.success(f"目前共有 {len(df_pre)} 筆預購項目待追蹤。")
+        else:
+            st.warning("目前沒有任何標記為「預購」的紀錄。")
+            
+        if st.button("🔄 刷新預購清單", key="refresh_p"):
+            st.cache_data.clear()
+            st.rerun()
+    else:
+        st.info("資料讀取中，請稍候...")
