@@ -126,7 +126,7 @@ with tab1:
 
 # --- Tab 2: 歷史紀錄 ---
 with tab2:
-    st.subheader(" 최근 跟刀紀錄 (Top 50)")
+    st.subheader(" 跟刀紀錄 (Top 50)")
     if ss:
         try:
             ws_res = ss.worksheet("回應試算表")
