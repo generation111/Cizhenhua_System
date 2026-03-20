@@ -145,7 +145,7 @@ with tab2:
 
 with tab3:
     df_all = fetch_all_data()
-    target_col = '產品內容(含預購)'
+    target_col = '使用產品內容(含預購）'
     
     if not df_all.empty:
         # 檢查欄位是否存在，避免 KeyError
