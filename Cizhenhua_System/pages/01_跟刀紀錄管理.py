@@ -12,7 +12,7 @@ SPREADSHEET_ID = "1w2BDsPHHxgaz6PJhoPLXdh0UQJplA6rr42wLoLQIM9s"
 
 st.set_page_config(page_title=f"{SYS_TITLE}", layout="centered", initial_sidebar_state="collapsed")
 
-# --- 2. 樣式優化 (標題貼頂 + 預購高亮) ---
+# --- 2. 樣式優化 ---
 st.markdown("""
 <style>
     .block-container { padding-top: 3.8rem !important; padding-bottom: 1rem !important; }
@@ -31,15 +31,6 @@ st.markdown("""
     div[data-testid="stTextArea"] textarea { height: 40px !important; min-height: 40px !important; padding: 8px !important; }
     div.stButton > button { height: 40px !important; width: 100% !important; font-weight: bold !important; border: 2px solid #1E3A8A !important; }
     footer {visibility: hidden;}
-    
-    /* 預購表格專用樣式 */
-    .preorder-box {
-        background-color: #FFF3E0;
-        border-left: 5px solid #FF9800;
-        padding: 10px;
-        margin-bottom: 10px;
-        border-radius: 5px;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -61,13 +52,14 @@ ss = get_ss()
 
 @st.cache_data(ttl=60)
 def fetch_all_data():
-    """統一抓取回應試算表數據"""
     if not ss: return pd.DataFrame()
     try:
         ws = ss.worksheet("回應試算表")
         data = ws.get_all_values()
         if len(data) > 1:
-            return pd.DataFrame(data[1:], columns=data[0])
+            # 關鍵修正：去除標題前後的所有空格
+            df = pd.DataFrame(data[1:], columns=[str(h).strip() for h in data[0]])
+            return df
         return pd.DataFrame()
     except:
         return pd.DataFrame()
@@ -97,7 +89,6 @@ OPT = get_options()
 st.markdown(f'<div class="sys-title">📋 {SYS_TITLE}</div>', unsafe_allow_html=True)
 tab1, tab2, tab3 = st.tabs(["🖋️ 資料登錄", "📊 歷史紀錄", "🔍 預購追蹤"])
 
-# --- Tab 1: 資料登錄 ---
 with tab1:
     if "rk_v11" not in st.session_state: st.session_state.rk_v11 = 0
     rk = st.session_state.rk_v11
@@ -105,7 +96,7 @@ with tab1:
     c1, c2, c3 = st.columns(3)
     d_date = c1.date_input("使用日期", value=datetime.now(tw_tz).date(), key=f"d_{rk}")
     d_dr = c2.text_input("醫師姓名", key=f"dr_{rk}")
-    d_content = c3.text_input("產品內容(含預購)", key=f"cn_{rk}", placeholder="若有預購請註明")
+    d_content = c3.text_input("產品內容(含預購)", key=f"cn_{rk}")
     
     c4, c5, c6 = st.columns(3)
     d_price = c4.selectbox("批價內容", OPT.get("price"), key=f"pr_{rk}")
@@ -144,37 +135,29 @@ with tab1:
                     st.rerun()
                 except Exception as e: st.error(f"寫入失敗: {e}")
 
-# --- Tab 2: 歷史紀錄 ---
 with tab2:
     df_history = fetch_all_data()
     if not df_history.empty:
-        st.subheader("📋 最近 50 筆紀錄")
         st.dataframe(df_history.iloc[::-1].head(50), use_container_width=True, hide_index=True)
-        if st.button("🔄 重新整理歷史", key="refresh_h"):
+        if st.button("🔄 重新整理", key="ref_h"):
             st.cache_data.clear()
             st.rerun()
-    else:
-        st.info("尚無紀錄或資料讀取中...")
 
-# --- Tab 3: 預購追蹤 (與 Google Sheets 連動) ---
 with tab3:
-    st.markdown('<div class="preorder-box">🔍 <b>系統說明：</b>本頁面自動篩選「產品內容(含預購)」欄位中包含「預購」二字的歷史紀錄。</div>', unsafe_allow_html=True)
-    
     df_all = fetch_all_data()
+    target_col = '產品內容(含預購)'
+    
     if not df_all.empty:
-        # 關鍵連動：篩選包含「預購」字眼的資料列
-        # 這裡會檢查該欄位，不論是大寫、小寫或中文預購都會被抓出來
-        df_pre = df_all[df_all['產品內容(含預購)'].str.contains('預購|PREORDER', case=False, na=False)]
-        
-        if not df_pre.empty:
-            # 依日期倒序排列
-            st.dataframe(df_pre.iloc[::-1], use_container_width=True, hide_index=True)
-            st.success(f"目前共有 {len(df_pre)} 筆預購項目待追蹤。")
+        # 檢查欄位是否存在，避免 KeyError
+        if target_col in df_all.columns:
+            df_pre = df_all[df_all[target_col].str.contains('預購|PREORDER', case=False, na=False)]
+            if not df_pre.empty:
+                st.dataframe(df_pre.iloc[::-1], use_container_width=True, hide_index=True)
+            else:
+                st.info("目前沒有預購紀錄。")
         else:
-            st.warning("目前沒有任何標記為「預購」的紀錄。")
-            
-        if st.button("🔄 刷新預購清單", key="refresh_p"):
-            st.cache_data.clear()
-            st.rerun()
+            st.error(f"系統找不到『{target_col}』欄位，請檢查試算表標題。")
+            # 顯示現有的標題供檢查
+            st.write("目前偵測到的標題為：", list(df_all.columns))
     else:
-        st.info("資料讀取中，請稍候...")
+        st.info("讀取資料中...")
