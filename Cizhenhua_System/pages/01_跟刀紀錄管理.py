@@ -12,7 +12,7 @@ SPREADSHEET_ID = "1w2BDsPHHxgaz6PJhoPLXdh0UQJplA6rr42wLoLQIM9s"
 
 st.set_page_config(page_title=f"{SYS_TITLE}", layout="centered", initial_sidebar_state="collapsed")
 
-# --- 2. 樣式優化 ---
+# --- 2. 樣式優化 (標題貼頂 + 表格優化) ---
 st.markdown("""
 <style>
     .block-container { padding-top: 3.8rem !important; padding-bottom: 1rem !important; }
@@ -31,6 +31,7 @@ st.markdown("""
     div[data-testid="stTextArea"] textarea { height: 40px !important; min-height: 40px !important; padding: 8px !important; }
     div.stButton > button { height: 40px !important; width: 100% !important; font-weight: bold !important; border: 2px solid #1E3A8A !important; }
     footer {visibility: hidden;}
+    .stDataFrame { font-size: 12px !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -57,7 +58,7 @@ def fetch_all_data():
         ws = ss.worksheet("回應試算表")
         data = ws.get_all_values()
         if len(data) > 1:
-            # 關鍵修正：去除標題前後的所有空格
+            # 強制清除所有標題空格並對齊你提供的欄位名稱
             df = pd.DataFrame(data[1:], columns=[str(h).strip() for h in data[0]])
             return df
         return pd.DataFrame()
@@ -89,6 +90,7 @@ OPT = get_options()
 st.markdown(f'<div class="sys-title">📋 {SYS_TITLE}</div>', unsafe_allow_html=True)
 tab1, tab2, tab3 = st.tabs(["🖋️ 資料登錄", "📊 歷史紀錄", "🔍 預購追蹤"])
 
+# --- Tab 1: 資料登錄 (對齊 16 個核心輸入欄位) ---
 with tab1:
     if "rk_v11" not in st.session_state: st.session_state.rk_v11 = 0
     rk = st.session_state.rk_v11
@@ -96,7 +98,7 @@ with tab1:
     c1, c2, c3 = st.columns(3)
     d_date = c1.date_input("使用日期", value=datetime.now(tw_tz).date(), key=f"d_{rk}")
     d_dr = c2.text_input("醫師姓名", key=f"dr_{rk}")
-    d_content = c3.text_input("產品內容(含預購)", key=f"cn_{rk}")
+    d_content = c3.text_input("使用產品內容(含預購）", key=f"cn_{rk}")
     
     c4, c5, c6 = st.columns(3)
     d_price = c4.selectbox("批價內容", OPT.get("price"), key=f"pr_{rk}")
@@ -111,22 +113,28 @@ with tab1:
     c10, c11, c12 = st.columns(3)
     d_dept = c10.selectbox("使用科別", OPT.get("dept"), key=f"dp_{rk}")
     d_qty = c11.number_input("數量", min_value=1, value=1, key=f"qt_{rk}")
-    d_opname = c12.text_input("手術名稱/部位", key=f"op_{rk}")
+    d_opname = c12.text_input("手術名稱/使用部位", key=f"op_{rk}")
     
     c13, c14, c15 = st.columns(3)
     d_loc = c13.selectbox("使用地點", OPT.get("loc"), key=f"lc_{rk}")
     d_blood = c14.selectbox("抽血人員", OPT.get("blood"), key=f"bl_{rk}")
-    d_rep = c15.selectbox("跟刀(人員)", OPT.get("rep"), key=f"rp_{rk}")
+    d_rep = c15.selectbox("跟刀(操作)人員", OPT.get("rep"), key=f"rp_{rk}")
 
     bc1, bc2, bc3 = st.columns([0.5, 3.2, 1.3]) 
     with bc1: st.markdown('<p style="font-weight:bold; margin-top:8px;">備註</p>', unsafe_allow_html=True)
-    with bc2: d_memo = st.text_area("備註", key=f"me_{rk}", height=40, placeholder="輸入備註...", label_visibility="collapsed")
+    with bc2: d_memo = st.text_area("備註說明", key=f"me_{rk}", height=40, placeholder="輸入備註...", label_visibility="collapsed")
     with bc3:
         if st.button("🚀 提交數據", key="submit_btn"):
             if ss:
                 try:
                     ws_res = ss.worksheet("回應試算表")
-                    row = [str(d_date), d_price, d_hosp, d_dept, d_dr, d_prod, d_spec, d_qty, d_content, d_pname, d_pid, d_opname, d_loc, d_blood, d_rep, d_memo]
+                    # 按照你提供的 16 個對外顯示欄位與試算表結構填入
+                    # 注意：公式欄位（預購餘量等）建議在試算表端設定，此處僅填入輸入值
+                    row = [
+                        str(d_date), d_price, d_hosp, d_dept, d_dr, 
+                        d_prod, d_spec, d_qty, "", "", "", # 預留給 預購總量/當日批價/預購餘量
+                        d_content, d_pname, d_pid, d_opname, d_loc, d_blood, d_rep, d_memo
+                    ]
                     ws_res.append_row(row, value_input_option='USER_ENTERED')
                     st.toast("✅ 資料已成功存檔")
                     time.sleep(1)
@@ -135,6 +143,7 @@ with tab1:
                     st.rerun()
                 except Exception as e: st.error(f"寫入失敗: {e}")
 
+# --- Tab 2: 歷史紀錄 ---
 with tab2:
     df_history = fetch_all_data()
     if not df_history.empty:
@@ -143,21 +152,28 @@ with tab2:
             st.cache_data.clear()
             st.rerun()
 
+# --- Tab 3: 預購追蹤 (欄位連動版) ---
 with tab3:
     df_all = fetch_all_data()
-    target_col = '使用產品內容(含預購）'
+    # 這裡連動你提供的「預購餘量」欄位
+    track_col = '預購餘量'
     
     if not df_all.empty:
-        # 檢查欄位是否存在，避免 KeyError
-        if target_col in df_all.columns:
-            df_pre = df_all[df_all[target_col].str.contains('預購|PREORDER', case=False, na=False)]
+        if track_col in df_all.columns:
+            # 將餘量轉為數字，篩選掉 0 或 空值的紀錄
+            df_all[track_col] = pd.to_numeric(df_all[track_col], errors='coerce').fillna(0)
+            df_pre = df_all[df_all[track_col] > 0]
+            
             if not df_pre.empty:
+                st.success(f"🔍 偵測到 {len(df_pre)} 筆未沖銷之預購紀錄")
                 st.dataframe(df_pre.iloc[::-1], use_container_width=True, hide_index=True)
             else:
-                st.info("目前沒有預購紀錄。")
+                st.info("目前所有預購項目皆已結清。")
         else:
-            st.error(f"系統找不到『{target_col}』欄位，請檢查試算表標題。")
-            # 顯示現有的標題供檢查
-            st.write("目前偵測到的標題為：", list(df_all.columns))
+            # 若試算表尚未建立該欄位，則退回原本的關鍵字篩選
+            alt_col = '使用產品內容(含預購）'
+            if alt_col in df_all.columns:
+                df_pre = df_all[df_all[alt_col].str.contains('預購', na=False)]
+                st.dataframe(df_pre.iloc[::-1], use_container_width=True, hide_index=True)
     else:
         st.info("讀取資料中...")
