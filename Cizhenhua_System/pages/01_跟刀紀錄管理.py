@@ -50,7 +50,7 @@ st.markdown(f"""
     
     /* 下拉選單 (Selectbox) 的外層與內層高度統一 */
     .stSelectbox [data-baseweb="select"] {{
-        height: 48px !important; /* 統一高度 */
+        height: 36px !important; /* 統一高度 */
         border: 1px solid #1e3a8a !important;
         border-radius: 8px !important;
         background-color: white !important;
