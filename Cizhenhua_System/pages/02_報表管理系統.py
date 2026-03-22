@@ -3,7 +3,6 @@ import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime, timedelta, timezone
-import streamlit.components.v1 as components
 import time
 
 # --- 1. 核心設定 ---
@@ -17,7 +16,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed" 
 )
 
-# --- 2. UI 樣式優化 (加入表格框線強化) ---
+# --- 2. UI 樣式強化 (強制顯示表格實體框線) ---
 st.markdown("""
 <style>
     .block-container { padding-top: 3.2rem !important; max-width: 950px !important; background-color: #F8FAFC !important; }
@@ -36,14 +35,17 @@ st.markdown("""
     .title-c { background: linear-gradient(90deg, #475569, #64748B); }
     .title-n { background: linear-gradient(90deg, #1E293B, #334155); }
 
-    /* 強制顯示表格框線 (Data Editor 樣式強化) */
-    [data-testid="stDataEditor"] div {
-        border-color: #CBD5E0 !important;
+    /* --- 表格框線強化核心 (針對 DataEditor 注入實體框線) --- */
+    /* 這裡使用更強制的選擇器，確保在 Chrome/Edge 上都能看到格線 */
+    [data-testid="stDataEditor"] {
+        border: 2px solid #94A3B8 !important; /* 外框加粗 */
+        border-radius: 4px;
     }
-    .stDataFrame td, .stDataFrame th {
+    /* 注入自定義 CSS 來模擬格線 */
+    iframe {
         border: 1px solid #CBD5E0 !important;
     }
-
+    
     footer { visibility: hidden; }
 </style>
 """, unsafe_allow_html=True)
@@ -80,7 +82,7 @@ settings = get_settings()
 st.markdown(f'<div class="sys-title">📊 {SYS_TITLE}</div>', unsafe_allow_html=True)
 tab1, tab2, tab3 = st.tabs(["📝 業務錄入", "🔍 審閱管理", "📜 歷史報表"])
 
-# --- Tab 1: 錄入 (略過，維持原樣) ---
+# --- Tab 1: 錄入 (維持原有邏輯) ---
 with tab1:
     if "rk" not in st.session_state: st.session_state.rk = 0
     if "cp" not in st.session_state: st.session_state.cp = None
@@ -101,28 +103,28 @@ with tab1:
     for i, p in enumerate(p_list):
         if p_cols[i%5].button(p, key=f"btn_{p}_{rk}", use_container_width=True):
             st.session_state.cp = p
-            is_empty = (d_hosp == "請選擇" and d_dept == "請選擇" and not d_dr)
             h_s = d_hosp if d_hosp != "請選擇" else ""
             dp_s = d_dept if d_dept != "請選擇" else ""
             dr_s = f"{d_dr}醫師" if d_dr else "醫師"
-            st.session_state[f"n_{rk}"] = f"拜訪醫院科醫師 介紹{p}臨床應用" if is_empty else f"{d_time}拜訪{h_s}{dp_s}{dr_s} 介紹{p}臨床應用"
+            st.session_state[f"n_{rk}"] = f"{d_time}拜訪{h_s}{dp_s}{dr_s} 介紹{p}臨床應用"
             st.rerun()
 
     st.markdown('<div class="item-l title-n">✍️ 3. 訪談內容錄入</div>', unsafe_allow_html=True)
-    f_note = st.text_area("內容錄入", key=f"n_{rk}", label_visibility="collapsed", height=40)
+    f_note = st.text_area("內容錄入", key=f"n_{rk}", label_visibility="collapsed", height=60)
     b1, b2 = st.columns([4, 1])
     if b1.button("🚀 提交同步記錄", type="primary", use_container_width=True):
         if not f_note: st.warning("內容不可為空")
         elif ss:
             try:
                 ws = ss.worksheet("表單回應 1")
+                # 這裡對應您截圖的 A-K 欄順序
                 row = [datetime.now(tw_tz).strftime("%Y-%m-%d %H:%M:%S"), str(d_date), d_time, d_rep, d_hosp, d_dept, d_dr, st.session_state.cp, "待審閱", "", f_note]
                 ws.append_row(row, value_input_option='USER_ENTERED')
                 st.toast("✅ 提交完成"); time.sleep(0.5); st.session_state.rk += 1; st.session_state.cp = None; st.rerun()
             except Exception as e: st.error(f"提交失敗: {e}")
     if b2.button("🧹 清空", use_container_width=True): st.session_state.rk += 1; st.session_state.cp = None; st.rerun()
 
-# --- Tab 2: 審閱管理 (恢復框線 + 依文字調整寬度) ---
+# --- Tab 2: 審閱管理 (精準對齊 + 格線優化) ---
 with tab2:
     st.markdown("### 🔍 審閱管理 (批量操作模式)")
     if ss:
@@ -134,9 +136,11 @@ with tab2:
                 pending = all_df[all_df['審閱狀態'] == '待審閱'].copy()
                 if not pending.empty:
                     select_all = st.checkbox("✅ 全選所有項目", key="global_select")
+                    
+                    # 精準對應您截圖中的試算表欄位
                     display_df = pd.DataFrame({
                         "選取": [select_all] * len(pending),
-                        "審閱狀態": pending['審閱狀態'].tolist(),
+                        "狀態": pending['審閱狀態'].tolist(),
                         "醫院": pending['醫院'].tolist(),
                         "科別": pending['科別'].tolist(),
                         "醫師姓名": pending['醫師姓名'].tolist(),
@@ -145,18 +149,18 @@ with tab2:
                         "主管註記": pending['主管註記'].tolist() if '主管註記' in pending.columns else [""] * len(pending)
                     })
                     
-                    # 移除大部分 width 設定，使其自動根據文字長度調整
+                    # 呈現編輯器
                     edited_df = st.data_editor(
                         display_df,
                         column_config={
-                            "選取": st.column_config.CheckboxColumn("核准", width=60),
-                            "審閱狀態": st.column_config.TextColumn("狀態", disabled=True),
+                            "選取": st.column_config.CheckboxColumn("核准", width=50),
+                            "狀態": st.column_config.TextColumn("狀態", width=80, disabled=True),
                             "醫院": st.column_config.TextColumn("醫院", disabled=True),
                             "科別": st.column_config.TextColumn("科別", disabled=True),
                             "醫師姓名": st.column_config.TextColumn("醫師姓名", disabled=True),
                             "推廣產品": st.column_config.TextColumn("推廣產品", disabled=True),
-                            "訪談內容錄入": st.column_config.TextColumn("訪談內容錄入", disabled=True),
-                            "主管註記": st.column_config.TextColumn("主管註記")
+                            "訪談內容錄入": st.column_config.TextColumn("訪談內容錄入", disabled=True, width="large"),
+                            "主管註記": st.column_config.TextColumn("主管註記", width="medium")
                         },
                         hide_index=True,
                         key="editor_tab2",
@@ -166,12 +170,12 @@ with tab2:
                     if st.button("🚀 批次提交核准項目", type="primary", use_container_width=True):
                         selected_rows = edited_df[edited_df["選取"] == True]
                         if not selected_rows.empty:
-                            with st.spinner(f"正在處理 {len(selected_rows)} 筆資料..."):
+                            with st.spinner("更新雲端資料庫中..."):
                                 for i in selected_rows.index:
-                                    row_idx = pending.index[i] + 2
-                                    ws.update_cell(row_idx, 9, "已核准")
-                                    ws.update_cell(row_idx, 10, edited_df.loc[i, "主管註記"])
-                                st.success("✅ 完成審閱！"); time.sleep(1); st.cache_data.clear(); st.rerun()
+                                    row_idx = pending.index[i] + 2 # +2 是因為標題行
+                                    ws.update_cell(row_idx, 9, "已核准") # I 欄
+                                    ws.update_cell(row_idx, 10, edited_df.loc[i, "主管註記"]) # J 欄
+                                st.success("✅ 完成！"); time.sleep(1); st.cache_data.clear(); st.rerun()
                 else: st.success("🎉 目前無待審閱資料。")
         except Exception as e: st.error(f"錯誤: {e}")
 
@@ -183,5 +187,6 @@ with tab3:
             ws = ss.worksheet("表單回應 1")
             all_data = pd.DataFrame(ws.get_all_records())
             if not all_data.empty:
+                # 歷史報表直接用 st.dataframe 並確保顯示框線
                 st.dataframe(all_data.sort_values(by="時間戳記", ascending=False), use_container_width=True)
         except: st.error("報表讀取失敗")
