@@ -16,7 +16,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed" 
 )
 
-# --- 2. UI 樣式優化 (框線強化 + 字體加大 + 高度 42px) ---
+# --- 2. UI 樣式優化 (消除日期雙框線 + 視覺統一) ---
 st.markdown("""
 <style>
     .block-container { padding-top: 3.5rem !important; max-width: 950px !important; background-color: #F8FAFC !important; }
@@ -33,21 +33,30 @@ st.markdown("""
     .title-c { background: linear-gradient(90deg, #475569, #64748B); }
     .title-n { background: linear-gradient(90deg, #1E293B, #334155); }
     
-    /* 所有錄入框高度 42px & 字體加大 & 藍色邊框 */
-    div[data-baseweb="input"], div[data-baseweb="select"], .stDateInput div {
+    /* 核心輸入框樣式：42px 高度 + 藍色單框線 */
+    div[data-baseweb="input"], 
+    div[data-baseweb="select"], 
+    div[data-testid="stDateInput"] > div:first-child {
         background-color: white !important;
         border: 1px solid #1E3A8A !important;
         border-radius: 8px !important;
         height: 42px !important;
     }
 
+    /* 針對日期輸入框內部去邊框，避免重複 */
+    div[data-testid="stDateInput"] div {
+        border: none !important;
+    }
+
     input, .stSelectbox div[data-baseweb="select"] > div {
         font-size: 1.1rem !important;
         height: 40px !important;
-        line-height: 28px !important;
+        line-height: 40px !important;
+        padding-top: 0px !important;
+        padding-bottom: 0px !important;
     }
 
-    /* 訪談內容錄入框高度縮減 */
+    /* 訪談內容錄入框高度縮減與邊框統一 */
     div[data-baseweb="textarea"] {
         min-height: 42px !important;
         border: 1px solid #1E3A8A !important;
@@ -71,7 +80,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. 手勢滑動偵測腳本 ---
+# --- 3. 手勢滑動偵測腳本 (保持不變) ---
 components.html("""
 <script>
     const doc = window.parent.document;
@@ -116,7 +125,7 @@ def get_settings():
 
 settings = get_settings()
 
-# --- 5. 行銷資料庫 (全數恢復鐵律版) ---
+# --- 5. 行銷資料庫 (鐵律版) ---
 MARKETING_DB = {
     "Mocolax": {
         "full_name": "Mocolax 行銷指引 (Phenprobamate 400mg)",
@@ -205,6 +214,7 @@ with tab1:
 
     st.markdown('<div class="item-l title-c">👤 2. 客戶基本資料</div>', unsafe_allow_html=True)
     r1c1, r1c2, r1c3 = st.columns(3)
+    # 日期輸入
     d_date = r1c1.date_input("日期", value=datetime.now(tw_tz).date(), key=f"dt_{rk}")
     d_time = r1c2.selectbox("時段", settings["times"], key=f"t_{rk}")
     d_rep = r1c3.selectbox("代表", settings["reps"], index=0, key=f"rep_{rk}")
