@@ -16,15 +16,15 @@ st.set_page_config(page_title=f"{SYS_TITLE}", layout="centered", initial_sidebar
 st.markdown(f"""
 <style>
     /* 根據佰哥建議調整至 6rem，確保標題不被切割 */
-    .block-container {{ padding-top: 6rem !important; padding-bottom: 1rem !important; }}
+    .block-container {{ padding-top: 6rem !important; padding-bottom: 02rem !important; }}
     
     .sys-title {{ 
         text-align: center; 
         font-size: 26px !important; 
         font-weight: 850; 
         color: #1E3A8A; 
-        margin-top: -20px !important; /* 配合 padding-top 向上微調 */
-        margin-bottom: 15px !important;
+        margin-top: -50px !important; /* 配合 padding-top 向上微調 */
+        margin-bottom: 25px !important;
         white-space: nowrap; 
     }}
     hr {{ border: 0.5px solid #f0f2f6 !important; margin: 10px 0 !important; }}
