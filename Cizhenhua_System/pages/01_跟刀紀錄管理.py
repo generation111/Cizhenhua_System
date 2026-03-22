@@ -12,10 +12,10 @@ SPREADSHEET_ID = "1w2BDsPHHxgaz6PJhoPLXdh0UQJplA6rr42wLoLQIM9s"
 
 st.set_page_config(page_title=f"{SYS_TITLE}", layout="centered", initial_sidebar_state="collapsed")
 
-# --- 2. 樣式優化 (恢復佰哥調校之參數) ---
+# --- 2. 樣式優化 (完全採用佰哥手動調整之參數) ---
 st.markdown(f"""
 <style>
-    /* 1. 調整整體頁面頂部間距 (佰哥調校版) */
+    /* 1. 調整整體頁面間距 (佰哥調校版) */
     .block-container {{ padding-top: 5rem !important; padding-bottom: 0.2rem !important; }}
     
     /* 2. 調整標題位置與下方間距 (佰哥調校版) */
@@ -29,7 +29,7 @@ st.markdown(f"""
         white-space: nowrap; 
     }}
     
-    /* 極窄分隔線優化 */
+    /* 極窄分隔線 */
     hr {{ 
         border: 0 !important; 
         border-top: 1px solid #e6e9ef !important; 
@@ -100,15 +100,15 @@ with tab1:
     if "rk_v11" not in st.session_state: st.session_state.rk_v11 = 0
     rk = st.session_state.rk_v11
     
-    # 第一區：基礎資訊 (ID 提前以便自動對帳)
+    # 作業區塊 1
     c1, c2, c3 = st.columns(3)
     d_date = c1.date_input("使用日期", value=datetime.now(tw_tz).date(), key=f"d_{rk}")
     d_dr = c2.text_input("醫師姓名", key=f"dr_{rk}")
-    d_pid = c3.text_input("病例號/ID (自動對帳)", key=f"pi_{rk}")
+    d_pid = c3.text_input("病例號/ID (輸入後自動對帳)", key=f"pi_{rk}")
     
     st.markdown("---")
     
-    # 第二區：批價邏輯判斷
+    # 作業區塊 2 (批價邏輯)
     c4, c5, c6 = st.columns(3)
     d_price = c4.selectbox("批價內容", OPT.get("price"), key=f"pr_{rk}")
     
@@ -145,7 +145,7 @@ with tab1:
                     st.error(f"❌ 餘額為 0")
                     can_submit = False
             else:
-                st.info("查無此 ID")
+                st.info("查無資料")
                 can_submit = False
     elif d_price == "使用他人預購":
         d_qty = c5.number_input("數量", min_value=1, value=1, key=f"qt_{rk}")
@@ -156,17 +156,18 @@ with tab1:
         d_qty = 0
         c6.success(f"寄庫：{d_pre_total}")
 
+    # 右側提示
     d_pre_remain = d_pre_total - d_pre_today
     if d_price != "使用前次預購" and d_pre_remain > 0:
         with c6: st.markdown(f"💡 **餘量：{d_pre_remain}**")
     
     st.markdown("---")
 
-    # 第三區：細節欄位
+    # 作業區塊 3 (產品細節)
     c7, c8, c9 = st.columns(3)
     d_prod = c7.selectbox("產品項目", OPT.get("prod"), key=f"pd_{rk}")
     d_spec = c8.text_input("規格", key=f"sp_{rk}")
-    d_content = c9.text_input("產品內容", key=f"cn_{rk}")
+    d_content = c9.text_input("使用產品內容(含預購）", key=f"cn_{rk}")
     
     c10, c11, c12 = st.columns(3)
     d_hosp = c10.selectbox("使用醫院", OPT.get("hosp"), key=f"hs_{rk}")
@@ -174,28 +175,29 @@ with tab1:
     d_dept = c12.selectbox("使用科別", OPT.get("dept"), key=f"dp_{rk}")
     
     c13, c14, c15 = st.columns(3)
-    d_opname = c13.text_input("手術/部位", key=f"op_{rk}")
-    d_loc = c14.selectbox("地點", OPT.get("loc"), key=f"lc_{rk}")
+    d_opname = c13.text_input("手術名稱/使用部位", key=f"op_{rk}")
+    d_loc = c14.selectbox("使用地點", OPT.get("loc"), key=f"lc_{rk}")
     d_blood = c15.selectbox("抽血人員", OPT.get("blood"), key=f"bl_{rk}")
     
     c16, c17, c18 = st.columns(3)
-    d_rep = c16.selectbox("跟刀人員", OPT.get("rep"), key=f"rp_{rk}")
-    d_memo = st.text_area("備註", key=f"me_{rk}", height=40, placeholder="備註內容...", label_visibility="collapsed")
-    
-    if st.button("🚀 提交數據", key="submit_btn", disabled=not can_submit):
-        if ss:
-            try:
-                ws_res = ss.worksheet("回應試算表")
-                row = [str(d_date), d_price, d_hosp, d_dept, d_dr, d_prod, d_spec, d_qty, d_pre_total, d_pre_today, d_pre_remain, d_content, d_pname, d_pid, d_opname, d_loc, d_blood, d_rep, d_memo]
-                ws_res.append_row(row, value_input_option='USER_ENTERED')
-                st.toast("✅ 數據存檔成功")
-                time.sleep(1)
-                st.session_state.rk_v11 += 1
-                st.cache_data.clear() 
-                st.rerun()
-            except: st.error("寫入失敗")
+    d_rep = c16.selectbox("跟刀(操作)人員", OPT.get("rep"), key=f"rp_{rk}")
+    with c17:
+        d_memo = st.text_area("備註", key=f"me_{rk}", height=40, placeholder="備註...", label_visibility="collapsed")
+    with c18:
+        if st.button("🚀 提交數據", key="submit_btn", disabled=not can_submit):
+            if ss:
+                try:
+                    ws_res = ss.worksheet("回應試算表")
+                    row = [str(d_date), d_price, d_hosp, d_dept, d_dr, d_prod, d_spec, d_qty, d_pre_total, d_pre_today, d_pre_remain, d_content, d_pname, d_pid, d_opname, d_loc, d_blood, d_rep, d_memo]
+                    ws_res.append_row(row, value_input_option='USER_ENTERED')
+                    st.toast("✅ 已存檔")
+                    time.sleep(1)
+                    st.session_state.rk_v11 += 1
+                    st.cache_data.clear() 
+                    st.rerun()
+                except: st.error("失敗")
 
-# 後續分頁維持原邏輯
+# 歷史與追蹤分頁維持原樣
 with tab2:
     df_h = fetch_all_data()
     if not df_h.empty:
