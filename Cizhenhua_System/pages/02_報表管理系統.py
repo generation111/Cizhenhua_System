@@ -136,12 +136,13 @@ with tab1:
     if b2.button("🧹 清空", use_container_width=True):
         st.session_state.rk += 1; st.session_state.cp = None; st.rerun()
 
-# --- Tab 2: 審閱管理 (橫向欄位排列) ---
+# --- Tab 2: 審閱管理 (精準欄位排列版) ---
 with tab2:
     st.markdown("### 🔍 審閱管理 (批量操作模式)")
     
     if ss:
         try:
+            # 確保獲取最新資料
             ws = ss.worksheet("表單回應 1")
             data = ws.get_all_records()
             all_df = pd.DataFrame(data)
@@ -154,28 +155,29 @@ with tab2:
                     # 全選開關
                     select_all = st.checkbox("✅ 全選所有項目", key="global_select")
                     
-                    # 構建橫向展開的 DataFrame
+                    # 根據您的要求構建 DataFrame
                     display_df = pd.DataFrame({
                         "選取": [select_all] * len(pending),
-                        "審閱狀態": pending['待審閱'].tolist(),
+                        "審閱狀態": pending['審閱狀態'].tolist(),
                         "醫院": pending['醫院'].tolist(),
                         "科別": pending['科別'].tolist(),
                         "醫師姓名": pending['醫師姓名'].tolist(),
-                        "推廣產品": pending['推廣產品'].tolist(),
-                        "訪談內容錄入": pending['訪談內容錄入'].tolist(),
+                        "推廣產品": pending['產品'].tolist(),
+                        "訪談內容錄入": pending['訪談內容概要'].tolist(),
                         "主管註記": pending['主管註記'].tolist() if '主管註記' in pending.columns else [""] * len(pending)
                     })
                     
-                    # 使用 Data Editor 橫向排列
+                    # 使用 Data Editor 呈現
                     edited_df = st.data_editor(
                         display_df,
                         column_config={
                             "選取": st.column_config.CheckboxColumn("核准", width="small"),
+                            "審閱狀態": st.column_config.TextColumn("狀態", width="small", disabled=True),
                             "醫院": st.column_config.TextColumn("醫院", width="medium", disabled=True),
                             "科別": st.column_config.TextColumn("科別", width="small", disabled=True),
                             "醫師姓名": st.column_config.TextColumn("醫師", width="small", disabled=True),
                             "推廣產品": st.column_config.TextColumn("產品", width="small", disabled=True),
-                            "訪談內容錄入": st.column_config.TextColumn("訪談內容", width="large", disabled=True),
+                            "訪談內容錄入": st.column_config.TextColumn("訪談內容錄入", width="large", disabled=True),
                             "主管註記": st.column_config.TextColumn("主管註記", width="medium")
                         },
                         hide_index=True,
@@ -191,25 +193,25 @@ with tab2:
                         else:
                             with st.spinner(f"正在處理 {len(selected_rows)} 筆資料..."):
                                 for i in selected_rows.index:
-                                    # 取得試算表行號 (pending 的原始 index + 2)
+                                    # 取得原始試算表行號
                                     row_idx = pending.index[i] + 2
                                     
-                                    # 更新「審閱狀態」與「主管註記」
-                                    # 依照試算表欄位順序：I 欄(9)是狀態, J 欄(10)是註記
-                                    ws.update_cell(row_idx, 9, "已審閱")
+                                    # 執行更新：I 欄 (9) 狀態改為「已核准」，J 欄 (10) 寫入註記
+                                    ws.update_cell(row_idx, 9, "已核准")
                                     ws.update_cell(row_idx, 10, edited_df.loc[i, "主管註記"])
                                 
-                                st.success("✅ 批次核准完成！")
+                                st.success(f"✅ 成功完成 {len(selected_rows)} 筆審閱！")
                                 time.sleep(1)
                                 st.cache_data.clear()
                                 st.rerun()
                 else:
-                    st.success("🎉 暫無待審閱資料。")
+                    st.success("🎉 目前無待審閱資料。")
             else:
                 st.info("尚未有任何錄入數據。")
                 
         except Exception as e:
             st.error(f"審閱系統執行錯誤: {e}")
+
 # --- Tab 3: 歷史報表 ---
 with tab3:
     st.markdown("### 📜 歷史同步記錄")
