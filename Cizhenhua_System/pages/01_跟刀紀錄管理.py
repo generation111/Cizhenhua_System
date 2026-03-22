@@ -8,12 +8,12 @@ import streamlit.components.v1 as components
 
 # --- 1. 核心設定 ---
 tw_tz = timezone(timedelta(hours=8))
-SYS_TITLE = "慈榛驊業務管理系統（完整邊框護眼版）"
+SYS_TITLE = "慈榛驊業務管理系統（全功能終極修復版）"
 SPREADSHEET_ID = "1w2BDsPHHxgaz6PJhoPLXdh0UQJplA6rr42wLoLQIM9s"
 
 st.set_page_config(page_title=f"{SYS_TITLE}", layout="centered", initial_sidebar_state="collapsed")
 
-# --- 2. 樣式精修 (解決框線重複與標籤錯誤問題) ---
+# --- 2. 樣式精修 (修復備註標籤、數量框線、統一高度) ---
 st.markdown(f"""
 <style>
     /* 1. 頁面基礎與護眼背景 */
@@ -30,31 +30,42 @@ st.markdown(f"""
         margin-top: -15px !important; margin-bottom: 20px !important; 
     }}
     
-    /* 3. 標籤文字 (Labels) - 確保純文字無框線 */
+    /* 3. 標籤文字 (Labels) - 確保清晰且無框線 */
     [data-testid="stWidgetLabel"] p {{
         font-size: 1.1rem !important;
         font-weight: 700 !important;
         color: #1e293b !important;
-        border: none !important; /* 確保標籤文字不帶框線 */
+        border: none !important; 
         margin-bottom: 5px !important;
     }}
 
-    /* 4. 【框線修正核心】錄入框高度與正確框線 */
-    /* 針對所有輸入元件的內部容器設定邊框 */
+    /* 4. 【框線全修復】錄入框、數量框、備註框 統一高度與框線 */
+    /* 涵蓋 TextInput, NumberInput, DateInput, Selectbox, TextArea */
     .stTextInput div[data-baseweb="input"], 
     .stNumberInput div[data-baseweb="input"], 
     .stDateInput div[data-baseweb="input"],
-    .stSelectbox div[data-baseweb="select"] {{
+    .stSelectbox div[data-baseweb="select"],
+    .stTextArea div[data-baseweb="textarea"] {{
         border: 1px solid #1e3a8a !important;
         border-radius: 8px !important;
-        height: 48px !important;
+        min-height: 48px !important;
         background-color: white !important;
+    }}
+
+    /* 特別針對備註 (TextArea) 的高度與內距 */
+    .stTextArea textarea {{
+        height: 48px !important; /* 初期與錄入框同高 */
+        font-size: 1.1rem !important;
+        background-color: transparent !important;
+        border: none !important;
+        outline: none !important;
+        padding: 8px 10px !important;
     }}
 
     /* 移除日期元件多餘的重複包圍 */
     .stDateInput > div {{ border: none !important; }}
 
-    /* 輸入文字樣式與垂直置中 */
+    /* 輸入文字樣式與垂直置中 (文字、數字、日期) */
     .stTextInput input, .stNumberInput input, .stDateInput input {{
         height: 46px !important;
         font-size: 1.1rem !important;
@@ -86,11 +97,11 @@ st.markdown(f"""
         background-color: #1e3a8a !important; color: white !important;
     }}
 
-    /* 7. 按鈕樣式 */
+    /* 7. 按鈕樣式 (提交按鈕) */
     div.stButton > button {{ 
         height: 50px !important; width: 100% !important; font-weight: bold !important; font-size: 1.2rem !important;
         background-color: #1e3a8a !important; color: white !important; border-radius: 8px !important;
-        margin-top: 10px;
+        margin-top: 15px;
     }}
     
     footer {{visibility: hidden;}}
@@ -170,8 +181,8 @@ st.markdown(f'<div class="sys-title">📋 {SYS_TITLE}</div>', unsafe_allow_html=
 tab1, tab2, tab3 = st.tabs(["🖋️ 資料錄入", "📊 歷史紀錄", "🔍 預購追蹤"])
 
 with tab1:
-    if "rk_v27" not in st.session_state: st.session_state.rk_v27 = 0
-    rk = st.session_state.rk_v27
+    if "rk_v28" not in st.session_state: st.session_state.rk_v28 = 0
+    rk = st.session_state.rk_v28
     status_msg = st.empty()
     
     # 區塊 1
@@ -223,7 +234,7 @@ with tab1:
     c16, c17, c18 = st.columns(3)
     d_rep = c16.selectbox("跟刀(操作)人員", OPT.get("rep"), key=f"rp_{rk}")
     
-    with c17: d_memo = st.text_area("備註", key=f"me_{rk}", height=45, label_visibility="collapsed")
+    with c17: d_memo = st.text_area("備註", key=f"me_{rk}", height=48) # 恢復 Label，高度統一
     with c18:
         if st.button("🚀 提交錄入數據", key="sub_btn", disabled=not can_submit):
             try:
@@ -234,7 +245,7 @@ with tab1:
                 else: remain = 0
                 row = [str(d_date), d_price, d_hosp, d_dept, d_dr, d_prod, d_spec, d_qty, d_pre_total, d_pre_today, remain, d_content, d_pname, d_pid, d_opname, d_loc, d_blood, d_rep, d_memo]
                 ss.worksheet("回應試算表").append_row(row, value_input_option='USER_ENTERED')
-                status_msg.success("✅ 資料已成功存檔！"); time.sleep(1); st.cache_data.clear(); st.session_state.rk_v27 += 1; st.rerun()
+                status_msg.success("✅ 資料已成功存檔！"); time.sleep(1); st.cache_data.clear(); st.session_state.rk_v28 += 1; st.rerun()
             except: status_msg.error("提交異常")
 
 with tab2:
