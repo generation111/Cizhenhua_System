@@ -15,7 +15,7 @@ st.set_page_config(page_title=f"{SYS_TITLE}", layout="centered", initial_sidebar
 # --- 2. 樣式優化 (修正標題切割問題) ---
 st.markdown(f"""
 <style>
-    /* 根據佰哥建議調整至 4.5rem，確保標題不被切割 */
+    /* 根據佰哥建議調整至 6rem，確保標題不被切割 */
     .block-container {{ padding-top: 4.5rem !important; padding-bottom: 1rem !important; }}
     
     .sys-title {{ 
