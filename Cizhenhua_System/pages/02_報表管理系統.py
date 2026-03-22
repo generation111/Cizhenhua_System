@@ -42,9 +42,9 @@ st.markdown("""
     }
 
     input, .stSelectbox div[data-baseweb="select"] > div {
-        font-size: 0.8rem !important;
+        font-size: 1.1rem !important;
         height: 40px !important;
-        line-height: 40px !important;
+        line-height: 30px !important;
     }
 
     /* 訪談內容錄入框高度縮減 */
