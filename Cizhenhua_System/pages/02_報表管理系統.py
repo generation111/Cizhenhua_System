@@ -17,7 +17,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed" 
 )
 
-# --- 2. UI 樣式優化 (框線、字體與間距) ---
+# --- 2. UI 樣式優化 (框線強化版) ---
 st.markdown("""
 <style>
     .block-container { padding-top: 2rem !important; max-width: 950px !important; background-color: #F8FAFC !important; }
@@ -38,6 +38,7 @@ st.markdown("""
     .title-c { background: linear-gradient(90deg, #475569, #64748B); }
     .title-n { background: linear-gradient(90deg, #1E293B, #334155); }
     
+    /* 輸入框邊框 1px 藍色實線 */
     div[data-baseweb="input"], 
     div[data-baseweb="select"], 
     div[data-testid="stDateInput"] > div:first-child {
@@ -78,7 +79,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. 手勢滑動偵測 ---
+# --- 3. 手勢滑動 ---
 components.html("""
 <script>
     const doc = window.parent.document;
@@ -162,7 +163,7 @@ MARKETING_DB = {
     "Biofermin-R": {
         "full_name": "Biofermin-R 行銷指引 (活性 R 菌)",
         "focus": "🎯 **藥品特性**：抗藥性活性乳酸菌製劑。\n- **臨床效益**：在抗生素環境下維持活性，重建腸道菌相。",
-        "action_table": [{"核心訴求": "耐藥活性", "目標": "重建菌叢", "行銷例句": "「醫師，Biofermin-R 是唯一能與抗生素共存的菌株。」"}],
+        "action_table": [{"核心訴求": "耐藥活性", "目標": "重建菌叢", "行銷例菌": "「醫師，Biofermin-R 是唯一能與抗生素共存的菌株。」"}],
         "dialogue": "「服用抗生素時搭配 R 菌，能保護腸道健康，避免腹瀉。」",
         "manager": "🌟 **主管點評**：抗生素處方的必備搭檔。預防 AAD 第一品牌。"
     },
@@ -220,16 +221,25 @@ with tab1:
     d_dept = r2c2.selectbox("科別", ["請選擇"] + settings["depts"], key=f"d_{rk}")
     d_dr = r2c3.text_input("醫師姓名", key=f"dr_{rk}")
 
-    # --- 產品按鈕邏輯：進行【產品】介紹....臨床應用 ---
+    # --- 核心邏輯：藥品點擊雙模式 (L1 / L2) ---
     for i, p in enumerate(MARKETING_DB.keys()):
         if p_cols[i%5].button(p, key=f"btn_{p}_{rk}", use_container_width=True):
             st.session_state.cp = p
-            h_s = d_hosp if d_hosp != "請選擇" else ""
-            dp_s = d_dept if d_dept != "請選擇" else ""
-            dr_s = f"{d_dr}醫師" if d_dr else "醫師"
             
-            # 組合語句：{時段} {醫院} {科別} {醫師姓名}，進行【{產品}】介紹....臨床應用
-            st.session_state[f"n_{rk}"] = f"{d_time} {h_s} {dp_s} {dr_s}，進行【{p}】介紹....臨床應用"
+            # 模式檢查：是否為「全未選」狀態
+            is_empty = (d_hosp == "請選擇" and d_dept == "請選擇" and not d_dr)
+            
+            if is_empty:
+                # 模式2：自動填充預設骨架 (L1模式)
+                final_text = f"拜訪醫院科醫師談\t{p}介紹....臨床應用"
+            else:
+                # 模式1：智慧帶入選單內容 (L2模式)
+                h_s = d_hosp if d_hosp != "請選擇" else ""
+                dp_s = d_dept if d_dept != "請選擇" else ""
+                dr_s = f"{d_dr}醫師" if d_dr else "醫師"
+                final_text = f"{d_time}拜訪{h_s}{dp_s}{dr_s}談\t{p}介紹....臨床應用"
+            
+            st.session_state[f"n_{rk}"] = final_text
             st.rerun()
 
     if st.session_state.cp:
@@ -256,48 +266,29 @@ with tab1:
     if b2.button("🧹 清空", use_container_width=True):
         st.session_state.rk += 1; st.session_state.cp = None; st.rerun()
 
-# --- Tab 2: 審閱管理 (功能恢復) ---
+# --- Tab 2 & 3 保持完整功能 ---
 with tab2:
     st.markdown("### 🔍 待審閱清單")
     if ss:
         ws = ss.worksheet("表單回應 1")
-        data = ws.get_all_records()
-        df = pd.DataFrame(data)
+        df = pd.DataFrame(ws.get_all_records())
         if '審閱狀態' in df.columns:
             pending = df[df['審閱狀態'] == "待審閱"]
-            if pending.empty:
-                st.success("目前無待審閱資料")
+            if pending.empty: st.success("目前無待審閱資料")
             else:
                 for i, row in pending.iterrows():
                     with st.container():
-                        st.markdown(f"""
-                        <div class="report-card">
-                            <b>📍 {row['醫院']} - {row['科別']} ({row['醫師姓名']})</b><br>
-                            ⏱️ {row['日期']} {row['時段']} | 👤 代表：{row['代表']}<br>
-                            📦 產品：{row['產品']}<br>
-                            📝 內容：{row['訪談內容概要']}
-                        </div>
-                        """, unsafe_allow_html=True)
+                        st.markdown(f'<div class="report-card"><b>📍 {row["醫院"]}-{row["科別"]}({row["醫師姓名"]})</b><br>📦 {row["產品"]}<br>📝 {row["訪談內容概要"]}</div>', unsafe_allow_html=True)
                         c1, c2, c3 = st.columns([1, 1, 2])
-                        comment = c3.text_input("批註", key=f"cmt_{i}", placeholder="輸入建議...")
-                        if c1.button("✅ 核准", key=f"app_{i}", use_container_width=True):
-                            ws.update_cell(i+2, 9, "已核准")
-                            ws.update_cell(i+2, 10, comment)
-                            st.rerun()
-                        if c2.button("❌ 駁回", key=f"rej_{i}", use_container_width=True):
-                            ws.update_cell(i+2, 9, "已駁回")
-                            ws.update_cell(i+2, 10, comment)
-                            st.rerun()
-        else:
-            st.error("試算表格式不正確")
+                        comment = c3.text_input("批註", key=f"cmt_{i}")
+                        if c1.button("✅ 核准", key=f"app_{i}"):
+                            ws.update_cell(i+2, 9, "已核准"); ws.update_cell(i+2, 10, comment); st.rerun()
+                        if c2.button("❌ 駁回", key=f"rej_{i}"):
+                            ws.update_cell(i+2, 9, "已駁回"); ws.update_cell(i+2, 10, comment); st.rerun()
 
-# --- Tab 3: 歷史報表 (功能恢復) ---
 with tab3:
     st.markdown("### 📜 歷史同步記錄")
     if ss:
         ws = ss.worksheet("表單回應 1")
         all_data = pd.DataFrame(ws.get_all_records())
-        if not all_data.empty:
-            st.dataframe(all_data.sort_values(by="時間戳記", ascending=False), use_container_width=True)
-        else:
-            st.info("尚無歷史記錄")
+        if not all_data.empty: st.dataframe(all_data.sort_values(by="時間戳記", ascending=False), use_container_width=True)
