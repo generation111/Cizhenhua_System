@@ -13,18 +13,16 @@ SPREADSHEET_ID = "1w2BDsPHHxgaz6PJhoPLXdh0UQJplA6rr42wLoLQIM9s"
 
 st.set_page_config(page_title=f"{SYS_TITLE}", layout="centered", initial_sidebar_state="collapsed")
 
-# --- 2. 樣式終極精修 (高度 42px + 全體字體加大 + 分頁強化) ---
+# --- 2. 樣式終極精修 (高度 42px + 字體加大 + 分頁強化) ---
 st.markdown(f"""
 <style>
-    /* 基礎背景 */
     .block-container {{ padding-top: 3rem !important; background-color: #F0F9F0 !important; }}
     .stApp {{ background-color: #F0F9F0 !important; }}
     .sys-title {{ text-align: center; font-size: 28px !important; font-weight: 900; color: #1e3a8a; margin-bottom: 15px !important; }}
 
-    /* 統一標籤樣式 (欄位名稱) */
     [data-testid="stWidgetLabel"] p {{ font-size: 1.1rem !important; font-weight: 700 !important; color: #1e293b !important; margin-bottom: 2px !important; }}
 
-    /* 【所有錄入框高度 42px & 字體加大 1.2rem】 */
+    /* 所有錄入框高度 42px & 字體加大 */
     div[data-baseweb="input"], div[data-baseweb="select"], div[data-baseweb="textarea"] {{
         background-color: white !important;
         border: 1px solid #1e3a8a !important;
@@ -33,52 +31,23 @@ st.markdown(f"""
         box-sizing: border-box !important;
     }}
 
-    /* 1. 一般文字框 & 日期框 文字加大 */
-    .stTextInput input, .stDateInput input {{
+    .stTextInput input, .stDateInput input, .stNumberInput input {{
         height: 40px !important;
-        font-size: 1.2rem !important; /* 加大字體 */
+        font-size: 1.2rem !important;
         font-weight: 500 !important;
         color: #1e293b !important;
         background-color: transparent !important;
         border: none !important;
     }}
 
-    /* 2. 下拉選單 (Selectbox) 文字加大 */
-    .stSelectbox [data-baseweb="select"] div {{
-        font-size: 1.2rem !important;
-        font-weight: 500 !important;
-        color: #1e293b !important;
-    }}
-    .stSelectbox [data-baseweb="select"] > div {{
-        height: 40px !important;
-        display: flex;
-        align-items: center;
-        padding-left: 8px !important;
-    }}
+    .stSelectbox [data-baseweb="select"] div {{ font-size: 1.2rem !important; font-weight: 500 !important; }}
+    .stSelectbox [data-baseweb="select"] > div {{ height: 40px !important; display: flex; align-items: center; padding-left: 8px !important; }}
 
-    /* 3. 數量框 (NumberInput) 文字加大 */
-    .stNumberInput input {{
-        height: 40px !important;
-        font-size: 1.2rem !important;
-        font-weight: 600 !important;
-        color: #1e293b !important;
-        background-color: transparent !important;
-        border: none !important;
-    }}
-
-    /* 4. 備註框 (TextArea) 文字加大 */
-    .stTextArea textarea {{ 
-        height: 40px !important; 
-        min-height: 40px !important; 
-        font-size: 1.1rem !important; /* 備註稍小一點點避免溢出 */
-        border: none !important; 
-        padding: 5px 10px !important;
-        line-height: 1.2 !important;
-    }}
+    .stTextArea textarea {{ height: 40px !important; min-height: 40px !important; font-size: 1.1rem !important; border: none !important; padding: 5px 10px !important; }}
 
     /* 分頁標籤強化加大 */
     .stTabs [data-baseweb="tab"] {{
-        height: 50px !important;
+        height: 52px !important;
         background-color: white; 
         border-radius: 8px 8px 0 0; 
         color: #64748b; 
@@ -87,24 +56,59 @@ st.markdown(f"""
         border: 1px solid #e2e8f0;
         padding: 0 25px !important;
     }}
-    .stTabs [aria-selected="true"] {{
-        background-color: #1e3a8a !important; 
-        color: white !important;
-    }}
+    .stTabs [aria-selected="true"] {{ background-color: #1e3a8a !important; color: white !important; }}
 
-    /* 提交按鈕樣式 */
-    div.stButton > button {{ 
-        height: 48px !important; width: 100% !important; font-size: 1.2rem !important; font-weight: bold !important;
-        background-color: #1e3a8a !important; color: white !important; border-radius: 8px !important;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
-    }}
+    div.stButton > button {{ height: 48px !important; width: 100% !important; font-size: 1.2rem !important; font-weight: bold !important; background-color: #1e3a8a !important; color: white !important; }}
 
     hr {{ display: none !important; }}
     footer {{visibility: hidden;}}
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. 數據核心 (維持不變) ---
+# --- 3. 手勢滑動功能修復腳本 ---
+components.html("""
+<script>
+    const doc = window.parent.document;
+    let touchstartX = 0;
+    let touchendX = 0;
+
+    function handleGesture() {
+        const tabs = doc.querySelectorAll('button[data-baseweb="tab"]');
+        if (!tabs || tabs.length === 0) return;
+        
+        let activeTabIndex = -1;
+        tabs.forEach((tab, index) => {
+            if (tab.getAttribute('aria-selected') === 'true') activeTabIndex = index;
+        });
+
+        const swipeDistance = touchendX - touchstartX;
+        
+        if (swipeDistance < -80) { // 向左滑 -> 下一頁
+            if (activeTabIndex < tabs.length - 1) {
+                tabs[activeTabIndex + 1].click();
+                window.parent.scrollTo({top: 0, behavior: 'smooth'});
+            }
+        }
+        if (swipeDistance > 80) { // 向右滑 -> 上一頁
+            if (activeTabIndex > 0) {
+                tabs[activeTabIndex - 1].click();
+                window.parent.scrollTo({top: 0, behavior: 'smooth'});
+            }
+        }
+    }
+
+    doc.addEventListener('touchstart', e => {
+        touchstartX = e.changedTouches[0].screenX;
+    }, {passive: true});
+
+    doc.addEventListener('touchend', e => {
+        touchendX = e.changedTouches[0].screenX;
+        handleGesture();
+    }, {passive: true});
+</script>
+""", height=0)
+
+# --- 4. 數據核心 ---
 @st.cache_resource(ttl=60)
 def get_ss():
     try:
@@ -159,13 +163,13 @@ def get_options():
 
 OPT = get_options()
 
-# --- 4. 介面佈局 ---
+# --- 5. 介面佈局 ---
 st.markdown(f'<div class="sys-title">📋 {SYS_TITLE}</div>', unsafe_allow_html=True)
 tab1, tab2, tab3 = st.tabs(["🖋️ 資料錄入", "📊 歷史紀錄", "🔍 預購追蹤"])
 
 with tab1:
-    if "rk_v32" not in st.session_state: st.session_state.rk_v32 = 0
-    rk = st.session_state.rk_v32
+    if "rk_v33" not in st.session_state: st.session_state.rk_v33 = 0
+    rk = st.session_state.rk_v33
     status_msg = st.empty()
     db_df = fetch_all_data()
 
@@ -216,7 +220,7 @@ with tab1:
     d_rep = c16.selectbox("跟刀(操作)", OPT.get("rep"), key=f"rp_{rk}")
     with c17: d_memo = st.text_area("備註", key=f"me_{rk}")
     with c18:
-        st.write("") # 墊高對齊
+        st.write("")
         if st.button("🚀 提交數據", key="sub_btn", disabled=not can_submit):
             try:
                 final_bal = get_current_balance(db_df, d_pid, d_prod)
@@ -228,7 +232,7 @@ with tab1:
                 ss.worksheet("回應試算表").append_row(row, value_input_option='USER_ENTERED')
                 status_msg.success("✅ 已存檔！")
                 st.cache_data.clear()
-                time.sleep(1); st.session_state.rk_v32 += 1; st.rerun()
+                time.sleep(1); st.session_state.rk_v33 += 1; st.rerun()
             except: status_msg.error("提交異常")
 
 with tab2:
