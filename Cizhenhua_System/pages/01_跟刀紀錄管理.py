@@ -40,7 +40,7 @@ st.markdown(f"""
     /* 4. 【核心修正】錄入框統一高度與樣式 */
     /* 文字框、數字框、日期框 */
     .stTextInput input, .stNumberInput input, .stDateInput input {{
-        height: 48px !important; /* 統一高度 */
+        height: 36px !important; /* 統一高度 */
         border: 1px solid #1e3a8a !important;
         border-radius: 8px !important;
         padding: 0 10px !important; /* 調整內距確保文字置中 */
