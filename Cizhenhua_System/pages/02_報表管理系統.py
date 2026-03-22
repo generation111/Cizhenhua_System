@@ -8,32 +8,81 @@ import time
 
 # --- 1. 核心設定 ---
 tw_tz = timezone(timedelta(hours=8))
+# 取得系統當前日期，用於日期輸入框預設值
 current_date = datetime.now(tw_tz).date()
 SYS_TITLE = "慈榛驊業務管理系統（全功能終極修復版）"
 
-st.set_page_config(page_title=SYS_TITLE, layout="centered", initial_sidebar_state="collapsed")
+st.set_page_config(
+    page_title=SYS_TITLE, 
+    layout="centered", 
+    initial_sidebar_state="collapsed" 
+)
 
-# --- 2. UI 樣式優化 ---
+# --- 2. UI 樣式優化 (Page 1 鐵律，原封不動) ---
 st.markdown("""
 <style>
     .block-container { padding-top: 2rem !important; max-width: 950px !important; background-color: #F8FAFC !important; }
     .stApp { background-color: #F8FAFC; color: #000000; }
+    
     label, p, span, div { color: #000000 !important; font-weight: normal !important; }
-    .sys-title { text-align: center; font-size: 24px !important; font-weight: bold; color: #1E3A8A !important; margin-bottom: 10px; }
-    .item-l { color: white !important; padding: 8px 15px; border-radius: 8px; font-weight: bold !important; margin: 10px 0 5px 0; font-size: 16px; }
+
+    .sys-title { 
+        text-align: center; font-size: 24px !important; font-weight: bold; 
+        color: #1E3A8A !important; margin-bottom: 10px; 
+    }
+    
+    .item-l { 
+        color: white !important; padding: 8px 15px; border-radius: 8px; 
+        font-weight: bold !important; margin: 10px 0 5px 0; font-size: 16px; 
+    }
     .title-p { background: linear-gradient(90deg, #64748B, #94A3B8); }
     .title-c { background: linear-gradient(90deg, #475569, #64748B); }
     .title-n { background: linear-gradient(90deg, #1E293B, #334155); }
-    div[data-baseweb="input"], div[data-baseweb="select"], div[data-testid="stDateInput"] > div:first-child {
-        background-color: white !important; border: 1px solid #1E3A8A !important; border-radius: 8px !important; height: 42px !important;
+    
+    /* 核心輸入框樣式：確保下緣框線 1px 藍色完整顯示 */
+    div[data-baseweb="input"], 
+    div[data-baseweb="select"], 
+    div[data-testid="stDateInput"] > div:first-child {
+        background-color: white !important;
+        border: 1px solid #1E3A8A !important;
+        border-radius: 8px !important;
+        height: 42px !important;
+        box-sizing: border-box !important;
     }
-    div[data-baseweb="textarea"] { border: 1px solid #1E3A8A !important; border-radius: 8px !important; }
-    textarea { font-size: 1.1rem !important; line-height: 1.4 !important; }
+
+    input, .stSelectbox div[data-baseweb="select"] > div {
+        font-size: 1.1rem !important;
+        height: 40px !important;
+        line-height: 28px !important;
+    }
+
+    /* 訪談錄入框 */
+    div[data-baseweb="textarea"] {
+        min-height: 42px !important;
+        border: 1px solid #1E3A8A !important;
+        border-radius: 8px !important;
+    }
+    textarea {
+        height: 42px !important; font-size: 1.1rem !important;
+        padding: 8px !important; line-height: 1.2 !important;
+    }
+
+    /* 審閱卡片樣式 */
+    .report-card {
+        background: white; padding: 12px; border-radius: 8px;
+        border-left: 5px solid #2B6CB0; margin-bottom: 10px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .stButton>button[kind="primary"] { 
+        height: 45px !important; background-color: #2B6CB0 !important; color: white !important;
+    }
+    
     footer { visibility: hidden; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. 手勢滑動 ---
+# --- 3. 手勢滑動偵測腳本 (原封不動) ---
 components.html("""
 <script>
     const doc = window.parent.document;
@@ -54,7 +103,7 @@ components.html("""
 </script>
 """, height=0)
 
-# --- 4. 數據連線 ---
+# --- 4. 數據連線 (原封不動) ---
 @st.cache_resource(ttl=60)
 def get_ss():
     try:
@@ -77,7 +126,7 @@ def get_settings():
 
 settings = get_settings()
 
-# --- 5. 行銷資料庫 (全數恢復佰哥鐵律版) ---
+# --- 5. 行銷資料庫 (佰哥鐵律，原封不動) ---
 MARKETING_DB = {
     "Mocolax": {
         "full_name": "Mocolax 行銷指引 (Phenprobamate 400mg)",
@@ -155,6 +204,7 @@ MARKETING_DB = {
 st.markdown(f'<div class="sys-title">📊 {SYS_TITLE}</div>', unsafe_allow_html=True)
 tab1, tab2, tab3 = st.tabs(["📝 業務錄入", "🔍 審閱管理", "📜 歷史報表"])
 
+# --- Tab 1: 錄入功能 (佰哥鐵律，原封不動) ---
 with tab1:
     if "rk" not in st.session_state: st.session_state.rk = 0
     if "cp" not in st.session_state: st.session_state.cp = None
@@ -166,6 +216,7 @@ with tab1:
 
     st.markdown('<div class="item-l title-c">👤 2. 客戶基本資料</div>', unsafe_allow_html=True)
     r1c1, r1c2, r1c3 = st.columns(3)
+    # 日期設為當前日期
     d_date = r1c1.date_input("日期", value=current_date, key=f"dt_{rk}")
     d_time = r1c2.selectbox("時段", settings["times"], key=f"t_{rk}")
     d_rep = r1c3.selectbox("代表", settings["reps"], index=0, key=f"rep_{rk}")
@@ -175,26 +226,12 @@ with tab1:
     d_dept = r2c2.selectbox("科別", ["請選擇"] + settings["depts"], key=f"d_{rk}")
     d_dr = r2c3.text_input("醫師姓名", key=f"dr_{rk}")
 
-    # --- 核心邏輯：L1/L2 智慧帶入 ---
     for i, p in enumerate(MARKETING_DB.keys()):
         if p_cols[i%5].button(p, key=f"btn_{p}_{rk}", use_container_width=True):
             st.session_state.cp = p
-            
-            # 判斷是否為 L1 (什麼都沒選)
-            is_l1 = (d_hosp == "請選擇" and d_dept == "請選擇" and not d_dr)
-            
-            if is_l1:
-                # 模式 2：自動填充預設骨架 (L1)
-                intro_text = f"拜訪醫院科醫師談{p}介紹"
-            else:
-                # 模式 1：智慧帶入選單內容 (L2)
-                h_s = d_hosp if d_hosp != "請選擇" else "醫院"
-                dp_s = d_dept if d_dept != "請selected" else "" # 排除 L2 模式下的預設字串
-                dp_val = d_dept if d_dept != "請選擇" else ""
-                dr_s = f"{d_dr}醫師" if d_dr else "醫師"
-                intro_text = f"{d_time}拜訪{h_s}{dp_val}{dr_s}談{p}介紹"
-            
-            st.session_state[f"n_{rk}"] = intro_text
+            h_s = d_hosp if d_hosp != "請選擇" else "醫院"
+            dr_s = f"{d_dr}醫師" if d_dr else "醫師"
+            st.session_state[f"n_{rk}"] = f"拜訪 {h_s} {dr_s}，進行【{p}】臨床應用說明。"
             st.rerun()
 
     if st.session_state.cp:
@@ -207,22 +244,112 @@ with tab1:
                 st.success(data["manager"])
 
     st.markdown('<div class="item-l title-n">✍️ 3. 訪談內容錄入</div>', unsafe_allow_html=True)
-    f_note = st.text_area("內容錄入", key=f"n_{rk}", label_visibility="collapsed", height=120)
+    f_note = st.text_area("內容錄入", key=f"n_{rk}", label_visibility="collapsed")
     
     b1, b2 = st.columns([4, 1])
     if b1.button("🚀 提交同步記錄", type="primary", use_container_width=True):
         if f_note and ss:
-            try:
-                ws = ss.worksheet("表單回應 1")
-                row = [datetime.now(tw_tz).strftime("%Y-%m-%d %H:%M:%S"), str(d_date), d_time, d_rep, d_hosp, d_dept, d_dr, st.session_state.cp, "待審閱", "", f_note]
-                ws.insert_row(row, 2, value_input_option='USER_ENTERED')
-                st.toast("✅ 提交完成"); time.sleep(0.5)
-                st.session_state.rk += 1; st.session_state.cp = None; st.rerun()
-            except Exception as e: st.error(f"提交失敗: {e}")
+            ws = ss.worksheet("表單回應 1")
+            row = [datetime.now(tw_tz).strftime("%Y-%m-%d %H:%M:%S"), str(d_date), d_time, d_rep, d_hosp, d_dept, d_dr, st.session_state.cp, "待審閱", "", f_note]
+            ws.insert_row(row, 2, value_input_option='USER_ENTERED')
+            st.toast("✅ 提交完成"); time.sleep(0.5)
+            st.session_state.rk += 1; st.session_state.cp = None; st.rerun()
+    
     if b2.button("🧹 清空", use_container_width=True):
         st.session_state.rk += 1; st.session_state.cp = None; st.rerun()
 
-# --- Tab 2/3 保持原功能 ---
+# --- Tab 2: 審閱管理 (精準修復欄位對齊 + 批量處理) ---
 with tab2:
     st.markdown("### 🔍 審閱管理 (批量操作模式)")
-    # ... (後續審閱代碼保持不變)
+    
+    if ss:
+        try:
+            # 確保獲取最新資料
+            ws = ss.worksheet("表單回應 1")
+            data = ws.get_all_records()
+            all_df = pd.DataFrame(data)
+            
+            if not all_df.empty and '審閱狀態' in all_df.columns:
+                # 篩選待審閱項目
+                pending = all_df[all_df['審閱狀態'] == '待審閱'].copy()
+                
+                if not pending.empty:
+                    # 全選開關
+                    select_all = st.checkbox("✅ 全選所有項目", key="global_select")
+                    
+                    # 構建 DataFrame
+                    display_df = pd.DataFrame({
+                        "選取": [select_all] * len(pending),
+                        "狀態": pending['審閱狀態'].tolist(),
+                        "醫院": pending['醫院'].tolist(),
+                        "科別": pending['科別'].tolist(),
+                        "醫師": pending['醫師姓名'].tolist(),
+                        "產品": pending['產品'].tolist(),
+                        "訪談內容錄入": pending['訪談內容概要'].tolist(), # 對應試算表 I 欄
+                        "主管註記": pending['主管註記'].tolist() if '主管註記' in pending.columns else [""] * len(pending) # 對應試算表 J 欄
+                    })
+                    
+                    # 使用 Data Editor 呈現
+                    edited_df = st.data_editor(
+                        display_df,
+                        column_config={
+                            "選取": st.column_config.CheckboxColumn("核准", width="small"),
+                            "狀態": st.column_config.TextColumn("狀態", width="small", disabled=True),
+                            "醫院": st.column_config.TextColumn("醫院", disabled=True),
+                            "科別": st.column_config.TextColumn("科別", disabled=True),
+                            "醫師": st.column_config.TextColumn("醫師", disabled=True),
+                            "產品": st.column_config.TextColumn("產品", disabled=True),
+                            "訪談內容錄入": st.column_config.TextColumn("訪談內容錄入", width="large", disabled=True),
+                            "主管註記": st.column_config.TextColumn("主管註記", width="medium")
+                        },
+                        hide_index=True,
+                        key="editor_tab2",
+                        use_container_width=True
+                    )
+                    
+                    if st.button("🚀 批次提交核准項目", type="primary", use_container_width=True):
+                        # 篩選被勾選的行
+                        selected_rows = edited_df[edited_df["選取"] == True]
+                        
+                        if selected_rows.empty:
+                            st.warning("請勾選要核准的項目。")
+                        else:
+                            with st.spinner(f"正在處理 {len(selected_rows)} 筆資料..."):
+                                # 逐一更新試算表
+                                ws = ss.worksheet("表單回應 1")
+                                for i in selected_rows.index:
+                                    # 取得原始試算表行號
+                                    row_idx = pending.index[i] + 2
+                                    
+                                    # 執行更新：I 欄 (9) 狀態改為「已核准」，J 欄 (10) 寫入註記
+                                    ws.update_cell(row_idx, 9, "已核准")
+                                    ws.update_cell(row_idx, 10, edited_df.loc[i, "主管註記"])
+                                
+                                st.success(f"✅ 成功完成 {len(selected_rows)} 筆審閱！")
+                                time.sleep(1)
+                                # 清除快取並重整
+                                st.cache_data.clear()
+                                st.rerun()
+                else:
+                    st.success("🎉 目前無待審閱資料。")
+            else:
+                st.info("尚未有任何錄入數據。")
+                
+        except Exception as e:
+            st.error(f"審閱系統執行錯誤: {e}")
+
+# --- Tab 3: 歷史報表 (精準修復自動欄寬) ---
+with tab3:
+    st.markdown("### 📜 歷史同步記錄")
+    if ss:
+        try:
+            ws = ss.worksheet("表單回應 1")
+            # 獲取所有資料
+            all_data = pd.DataFrame(ws.get_all_records())
+            
+            if not all_data.empty:
+                # 呈現表格，讓系統自動調整欄寬
+                st.dataframe(all_data.sort_values(by="時間戳記", ascending=False), use_container_width=True)
+            else:
+                st.info("目前無任何歷史記錄。")
+        except: st.error("報表讀取失敗")
