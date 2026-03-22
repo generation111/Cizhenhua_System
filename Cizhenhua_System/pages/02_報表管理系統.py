@@ -17,7 +17,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed" 
 )
 
-# --- 2. UI 樣式優化 ---
+# --- 2. UI 樣式優化 (框線、字體與間距) ---
 st.markdown("""
 <style>
     .block-container { padding-top: 2rem !important; max-width: 950px !important; background-color: #F8FAFC !important; }
@@ -122,7 +122,7 @@ def get_settings():
 
 settings = get_settings()
 
-# --- 5. 行銷資料庫 (全數恢復鐵律版) ---
+# --- 5. 行銷資料庫 (全數完整恢復) ---
 MARKETING_DB = {
     "Mocolax": {
         "full_name": "Mocolax 行銷指引 (Phenprobamate 400mg)",
@@ -220,17 +220,16 @@ with tab1:
     d_dept = r2c2.selectbox("科別", ["請選擇"] + settings["depts"], key=f"d_{rk}")
     d_dr = r2c3.text_input("醫師姓名", key=f"dr_{rk}")
 
-    # --- 關鍵修正：產品按鈕語句組合邏輯 ---
+    # --- 產品按鈕邏輯：進行【產品】介紹....臨床應用 ---
     for i, p in enumerate(MARKETING_DB.keys()):
         if p_cols[i%5].button(p, key=f"btn_{p}_{rk}", use_container_width=True):
             st.session_state.cp = p
-            # 判斷是否為預設值，若不是則加入語句
             h_s = d_hosp if d_hosp != "請選擇" else ""
             dp_s = d_dept if d_dept != "請選擇" else ""
             dr_s = f"{d_dr}醫師" if d_dr else "醫師"
             
-            # 組合新語句：{時段} {醫院} {科別} {醫師姓名}，進行【{產品}】介紹。
-            st.session_state[f"n_{rk}"] = f"{d_time} {h_s} {dp_s} {dr_s}，進行【{p}】介紹。"
+            # 組合語句：{時段} {醫院} {科別} {醫師姓名}，進行【{產品}】介紹....臨床應用
+            st.session_state[f"n_{rk}"] = f"{d_time} {h_s} {dp_s} {dr_s}，進行【{p}】介紹....臨床應用"
             st.rerun()
 
     if st.session_state.cp:
@@ -257,7 +256,7 @@ with tab1:
     if b2.button("🧹 清空", use_container_width=True):
         st.session_state.rk += 1; st.session_state.cp = None; st.rerun()
 
-# --- Tab 2: 審閱管理 ---
+# --- Tab 2: 審閱管理 (功能恢復) ---
 with tab2:
     st.markdown("### 🔍 待審閱清單")
     if ss:
@@ -292,7 +291,7 @@ with tab2:
         else:
             st.error("試算表格式不正確")
 
-# --- Tab 3: 歷史報表 ---
+# --- Tab 3: 歷史報表 (功能恢復) ---
 with tab3:
     st.markdown("### 📜 歷史同步記錄")
     if ss:
