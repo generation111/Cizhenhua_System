@@ -12,29 +12,31 @@ SPREADSHEET_ID = "1w2BDsPHHxgaz6PJhoPLXdh0UQJplA6rr42wLoLQIM9s"
 
 st.set_page_config(page_title=f"{SYS_TITLE}", layout="centered", initial_sidebar_state="collapsed")
 
-# --- 2. 樣式優化 ---
-st.markdown("""
+# --- 2. 樣式優化 (修正標題切割問題) ---
+st.markdown(f"""
 <style>
-    .block-container { padding-top: 3.8rem !important; padding-bottom: 1rem !important; }
-    .sys-title { 
+    /* 根據佰哥建議調整至 4.5rem，確保標題不被切割 */
+    .block-container {{ padding-top: 4.5rem !important; padding-bottom: 1rem !important; }}
+    
+    .sys-title {{ 
         text-align: center; 
         font-size: 26px !important; 
         font-weight: 850; 
         color: #1E3A8A; 
-        margin-top: -30px !important; 
-        margin-bottom: 20px !important;
+        margin-top: -45px !important; /* 配合 padding-top 向上微調 */
+        margin-bottom: 25px !important;
         white-space: nowrap; 
-    }
-    hr { display: none !important; }
-    div[data-testid="column"] { display: flex; align-items: center; justify-content: center; }
-    div[data-testid="stTextArea"] label { display: none !important; }
-    div[data-testid="stTextArea"] textarea { height: 40px !important; min-height: 40px !important; padding: 8px !important; }
-    div.stButton > button { height: 40px !important; width: 100% !important; font-weight: bold !important; border: 2px solid #1E3A8A !important; }
-    footer {visibility: hidden;}
+    }}
+    hr {{ border: 0.5px solid #f0f2f6 !important; margin: 10px 0 !important; }}
+    div[data-testid="column"] {{ display: flex; align-items: center; justify-content: center; }}
+    div[data-testid="stTextArea"] label {{ display: none !important; }}
+    div[data-testid="stTextArea"] textarea {{ height: 40px !important; min-height: 40px !important; padding: 8px !important; }}
+    div.stButton > button {{ height: 40px !important; width: 100% !important; font-weight: bold !important; border: 2px solid #1E3A8A !important; }}
+    footer {{visibility: hidden;}}
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. 數據連線 ---
+# --- 3. 數據連線核心 ---
 @st.cache_resource(ttl=60)
 def get_ss():
     try:
@@ -90,72 +92,56 @@ with tab1:
     if "rk_v11" not in st.session_state: st.session_state.rk_v11 = 0
     rk = st.session_state.rk_v11
     
-    # --- A. 基礎資料輸入 ---
+    # --- 第一區：基本資料 ---
     c1, c2, c3 = st.columns(3)
     d_date = c1.date_input("使用日期", value=datetime.now(tw_tz).date(), key=f"d_{rk}")
     d_dr = c2.text_input("醫師姓名", key=f"dr_{rk}")
     d_content = c3.text_input("使用產品內容(含預購）", key=f"cn_{rk}")
     
-    # --- B. 核心邏輯判斷區 (圖表5條件連動) ---
+    # --- 第二區：批價邏輯 (圖表5條件) ---
     st.markdown("---")
     c4, c5, c6 = st.columns(3)
     d_price = c4.selectbox("批價內容", OPT.get("price"), key=f"pr_{rk}")
     
-    # 初始化變數
-    init_qty = 1
-    init_pre_total = 0
-    init_pre_today = 0
-    
-    # 邏輯 1: 單次批價使用 (數量 = 批價量，預購為0)
     if d_price == "單次批價使用":
-        st.caption("✅ 模式：單次直接批價。預購欄位已鎖定。")
+        st.caption("✅ 模式：單次直接批價。")
         d_qty = c5.number_input("數量", min_value=1, value=1, key=f"qt_{rk}")
         d_pre_total = 0
         d_pre_today = d_qty
         c6.info(f"當日批價量：{d_pre_today}")
-
-    # 邏輯 2: 批價 + 預購 (計算餘量)
     elif d_price == "批價 + 預購":
-        st.caption("✅ 模式：當日使用並同時預購剩餘量。")
+        st.caption("✅ 模式：當日使用並預購。")
         d_pre_total = c5.number_input("預購總量", min_value=1, value=10, key=f"pt_{rk}")
         d_pre_today = c6.number_input("當日批價量", min_value=1, value=1, key=f"py_{rk}")
-        d_qty = d_pre_today # 實際使用量即為當日批價量
-
-    # 邏輯 3: 使用前次預購 (扣除餘量)
-    elif d_price == "使用前次預購":
-        st.warning("⚠️ 模式：使用醫師之前的預購寄庫。")
-        d_pre_today = c5.number_input("當日批價量 (扣除數)", min_value=1, value=1, key=f"py_{rk}")
-        d_pre_total = 0 # 此模式僅記錄扣除
         d_qty = d_pre_today
-        c6.write("") # 保持對齊
-
-    # 邏輯 4: 使用他人預購 (跨人扣帳)
-    elif d_price == "使用他人預購":
-        st.error("❗ 模式：借用他人寄庫。請務必在備註註明原始所有者。")
-        d_qty = c5.number_input("數量 (使用量)", min_value=1, value=1, key=f"qt_{rk}")
-        d_pre_today = d_qty
+    elif d_price == "使用前次預購":
+        st.warning("⚠️ 模式：扣除前次寄庫。")
+        d_pre_today = c5.number_input("當日批價量", min_value=1, value=1, key=f"py_{rk}")
         d_pre_total = 0
-        c6.info(f"將扣除他人批價量：{d_pre_today}")
-
-    # 邏輯 5: 純預購寄庫 (不批價，僅寄庫)
+        d_qty = d_pre_today
+        c6.write("")
+    elif d_price == "使用他人預購":
+        st.error("❗ 模式：跨人扣帳（請註明於備註）。")
+        d_qty = c5.number_input("數量", min_value=1, value=1, key=f"qt_{rk}")
+        d_pre_total = 0
+        d_pre_today = d_qty
+        c6.info(f"扣除量：{d_pre_today}")
     elif d_price == "純預購寄庫":
-        st.caption("✅ 模式：純寄庫。當日批價量為 0。")
+        st.caption("✅ 模式：純寄庫不批價。")
         d_pre_total = c5.number_input("預購總量", min_value=1, value=10, key=f"pt_{rk}")
         d_pre_today = 0
         d_qty = 0
-        c6.success(f"寄庫總量：{d_pre_total}")
-
+        c6.success(f"寄庫：{d_pre_total}")
     else:
         d_qty = c5.number_input("數量", min_value=0, value=0, key=f"qt_{rk}")
         d_pre_total = 0
         d_pre_today = 0
 
-    # 計算預購餘量
     d_pre_remain = d_pre_total - d_pre_today
-    st.markdown(f"**💡 即時餘量計算：{d_pre_remain}**")
+    st.markdown(f"**💡 即時計算：預購餘量 = {d_pre_remain}**")
     st.markdown("---")
 
-    # --- C. 其他資料輸入 ---
+    # --- 第三區：產品與位置 ---
     c7, c8, c9 = st.columns(3)
     d_prod = c7.selectbox("產品項目", OPT.get("prod"), key=f"pd_{rk}")
     d_spec = c8.text_input("規格", key=f"sp_{rk}")
@@ -173,28 +159,27 @@ with tab1:
     
     c16, c17, c18 = st.columns(3)
     d_rep = c16.selectbox("跟刀(操作)人員", OPT.get("rep"), key=f"rp_{rk}")
-    d_memo = c17.text_area("備註說明", key=f"me_{rk}", height=40, placeholder="備註...", label_visibility="collapsed")
+    d_memo = c17.text_area("備註", key=f"me_{rk}", height=40, placeholder="備註內容...", label_visibility="collapsed")
     
     with c18:
         if st.button("🚀 提交數據", key="submit_btn"):
             if ss:
                 try:
                     ws_res = ss.worksheet("回應試算表")
-                    # 完全對齊 19 個欄位順序
                     row = [
                         str(d_date), d_price, d_hosp, d_dept, d_dr, 
                         d_prod, d_spec, d_qty, d_pre_total, d_pre_today, d_pre_remain, 
                         d_content, d_pname, d_pid, d_opname, d_loc, d_blood, d_rep, d_memo
                     ]
                     ws_res.append_row(row, value_input_option='USER_ENTERED')
-                    st.toast(f"✅ 已存檔！餘量：{d_pre_remain}")
+                    st.toast(f"✅ 存檔成功！餘量：{d_pre_remain}")
                     time.sleep(1)
                     st.session_state.rk_v11 += 1
                     st.cache_data.clear() 
                     st.rerun()
-                except Exception as e: st.error(f"寫入失敗: {e}")
+                except Exception as e: st.error(f"錯誤: {e}")
 
-# --- 歷史紀錄與預購追蹤邏輯保持 (自動根據餘量篩選) ---
+# --- 歷史與預購分頁 ---
 with tab2:
     df_h = fetch_all_data()
     if not df_h.empty:
