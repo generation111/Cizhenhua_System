@@ -28,7 +28,7 @@ st.markdown(f"""
         background-color: white !important;
         border: 1px solid #1e3a8a !important;
         border-radius: 8px !important;
-        height: 44px !important;
+        height: 42px !important;
         box-sizing: border-box !important;
     }}
 
