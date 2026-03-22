@@ -17,26 +17,53 @@ st.set_page_config(
     initial_sidebar_state="collapsed" 
 )
 
-# --- 2. UI 樣式優化 ---
+# --- 2. UI 樣式優化 (Padding 調整至 3.2rem) ---
 st.markdown("""
 <style>
-    .block-container { padding-top: 2rem !important; max-width: 950px !important; background-color: #F8FAFC !important; }
+    .block-container { padding-top: 3.2rem !important; max-width: 950px !important; background-color: #F8FAFC !important; }
     .stApp { background-color: #F8FAFC; color: #000000; }
-    .sys-title { text-align: center; font-size: 24px !important; font-weight: bold; color: #1E3A8A !important; margin-bottom: 10px; }
-    .item-l { color: white !important; padding: 8px 15px; border-radius: 8px; font-weight: bold !important; margin: 10px 0 5px 0; font-size: 16px; }
+    
+    label, p, span, div { color: #000000 !important; font-weight: normal !important; }
+
+    .sys-title { 
+        text-align: center; font-size: 24px !important; font-weight: bold; 
+        color: #1E3A8A !important; margin-bottom: 10px; 
+    }
+    
+    .item-l { 
+        color: white !important; padding: 8px 15px; border-radius: 8px; 
+        font-weight: bold !important; margin: 10px 0 5px 0; font-size: 16px; 
+    }
     .title-p { background: linear-gradient(90deg, #64748B, #94A3B8); }
     .title-c { background: linear-gradient(90deg, #475569, #64748B); }
     .title-n { background: linear-gradient(90deg, #1E293B, #334155); }
-    div[data-baseweb="input"], div[data-baseweb="select"], div[data-testid="stDateInput"] > div:first-child {
-        background-color: white !important; border: 1px solid #1E3A8A !important; border-radius: 8px !important; height: 42px !important;
+    
+    div[data-baseweb="input"], 
+    div[data-baseweb="select"], 
+    div[data-testid="stDateInput"] > div:first-child {
+        background-color: white !important;
+        border: 1px solid #1E3A8A !important;
+        border-radius: 8px !important;
+        height: 42px !important;
     }
-    textarea { height: 42px !important; font-size: 1.1rem !important; padding: 8px !important; }
-    .report-card { background: white; padding: 12px; border-radius: 8px; border-left: 5px solid #2B6CB0; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
+    textarea {
+        height: 42px !important; font-size: 1.1rem !important;
+        padding: 8px !important; line-height: 1.2 !important;
+    }
+
+    .report-card {
+        background: white; padding: 12px; border-radius: 8px;
+        border-left: 5px solid #2B6CB0; margin-bottom: 10px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        color: black !important;
+    }
+
     footer { visibility: hidden; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. 數據連線 (強化報錯處理) ---
+# --- 3. 數據連線 ---
 @st.cache_resource(ttl=60)
 def get_ss():
     try:
@@ -44,10 +71,10 @@ def get_ss():
             st.secrets["gcp_service_account"], 
             scopes=["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
         )
-        # 建議檢查網址是否正確
+        # 指向佰哥提供的試算表
         return gspread.authorize(creds).open_by_url("https://docs.google.com/spreadsheets/d/1FREJX9NPtyVcAG1jou4jD0MjbAVoW-treZTpsmehCks/edit")
     except Exception as e:
-        st.error(f"連線失敗，請檢查 GCP 金鑰或網路。錯誤: {str(e)}")
+        st.error(f"連線失敗: {e}")
         return None
 
 ss = get_ss()
@@ -83,6 +110,7 @@ MARKETING_DB = {
 st.markdown(f'<div class="sys-title">📊 {SYS_TITLE}</div>', unsafe_allow_html=True)
 tab1, tab2, tab3 = st.tabs(["📝 業務錄入", "🔍 審閱管理", "📜 歷史報表"])
 
+# --- Tab 1: 錄入邏輯 (雙模式 L1/L2) ---
 with tab1:
     if "rk" not in st.session_state: st.session_state.rk = 0
     if "cp" not in st.session_state: st.session_state.cp = None
@@ -102,7 +130,6 @@ with tab1:
     d_dept = r2c2.selectbox("科別", ["請選擇"] + settings["depts"], key=f"d_{rk}")
     d_dr = r2c3.text_input("醫師姓名", key=f"dr_{rk}")
 
-    # 藥品點擊雙模式邏輯
     for i, p in enumerate(MARKETING_DB.keys()):
         if p_cols[i%5].button(p, key=f"btn_{p}_{rk}", use_container_width=True):
             st.session_state.cp = p
@@ -122,38 +149,65 @@ with tab1:
     
     b1, b2 = st.columns([4, 1])
     if b1.button("🚀 提交同步記錄", type="primary", use_container_width=True):
-        if not f_note:
-            st.warning("請先輸入內容再提交。")
-        elif not ss:
-            st.error("系統未連線至 Google Sheets，請檢查設定。")
-        else:
+        if not f_note: st.warning("內容不可為空")
+        elif ss:
             try:
-                # 增加延遲防範 Quota 限制
-                with st.spinner("同步中..."):
-                    ws = ss.worksheet("表單回應 1")
-                    row = [
-                        datetime.now(tw_tz).strftime("%Y-%m-%d %H:%M:%S"), 
-                        str(d_date), d_time, d_rep, d_hosp, d_dept, d_dr, 
-                        st.session_state.cp, "待審閱", "", f_note
-                    ]
-                    # 執行寫入
-                    ws.insert_row(row, 2, value_input_option='USER_ENTERED')
-                    st.toast("✅ 數據已成功存入雲端"); time.sleep(0.5)
-                    st.session_state.rk += 1; st.session_state.cp = None; st.rerun()
-            except gspread.exceptions.APIError as e:
-                st.error(f"寫入失敗：可能是 API 流量過載或工作表名稱錯誤。錯誤詳情：{str(e)}")
-            except Exception as e:
-                st.error(f"發生非預期錯誤：{str(e)}")
-    
+                ws = ss.worksheet("表單回應 1")
+                row = [datetime.now(tw_tz).strftime("%Y-%m-%d %H:%M:%S"), str(d_date), d_time, d_rep, d_hosp, d_dept, d_dr, st.session_state.cp, "待審閱", "", f_note]
+                ws.insert_row(row, 2, value_input_option='USER_ENTERED')
+                st.toast("✅ 已提交"); time.sleep(0.5)
+                st.session_state.rk += 1; st.session_state.cp = None; st.rerun()
+            except Exception as e: st.error(f"提交失敗: {e}")
+
     if b2.button("🧹 清空", use_container_width=True):
         st.session_state.rk += 1; st.session_state.cp = None; st.rerun()
 
-# --- Tab 2 & 3 保持邏輯不變 ---
+# --- Tab 2: 審閱管理 (修復邏輯) ---
 with tab2:
     st.markdown("### 🔍 待審閱清單")
     if ss:
         try:
             ws = ss.worksheet("表單回應 1")
-            df = pd.DataFrame(ws.get_all_records())
-            # ...後續審閱邏輯...
-        except: st.info("暫無待審閱數據或讀取失敗")
+            data = ws.get_all_records()
+            df = pd.DataFrame(data)
+            if not df.empty and '審閱狀態' in df.columns:
+                pending = df[df['審閱狀態'] == "待審閱"]
+                if pending.empty:
+                    st.success("目前暫無待審閱資料。")
+                else:
+                    for idx, row in pending.iterrows():
+                        # 計算在試算表中的實際行號 (Header=1, list index starts 0, insert_row pushes down)
+                        actual_row = idx + 2 
+                        with st.container():
+                            st.markdown(f"""
+                            <div class="report-card">
+                                <b>📍 {row.get('醫院','未知')} - {row.get('科別','')} ({row.get('醫師姓名','')})</b><br>
+                                ⏱️ {row.get('日期','')} | 📦 {row.get('產品','')}<br>
+                                📝 {row.get('訪談內容概要','')}
+                            </div>
+                            """, unsafe_allow_html=True)
+                            c1, c2, c3 = st.columns([1, 1, 2])
+                            comment = c3.text_input("批註建議", key=f"cmt_{idx}")
+                            if c1.button("✅ 核准", key=f"app_{idx}"):
+                                ws.update_cell(actual_row, 9, "已核准")
+                                ws.update_cell(actual_row, 10, comment)
+                                st.rerun()
+                            if c2.button("❌ 駁回", key=f"rej_{idx}"):
+                                ws.update_cell(actual_row, 9, "已駁回")
+                                ws.update_cell(actual_row, 10, comment)
+                                st.rerun()
+        except Exception as e: st.error(f"讀取審閱清單出錯: {e}")
+
+# --- Tab 3: 歷史報表 ---
+with tab3:
+    st.markdown("### 📜 歷史同步記錄")
+    if ss:
+        try:
+            ws = ss.worksheet("表單回應 1")
+            all_data = pd.DataFrame(ws.get_all_records())
+            if not all_data.empty:
+                # 依時間戳記倒序排列
+                st.dataframe(all_data.sort_values(by="時間戳記", ascending=False), use_container_width=True)
+            else:
+                st.info("目前無任何歷史記錄。")
+        except Exception as e: st.error(f"報表讀取失敗: {e}")
