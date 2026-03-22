@@ -13,7 +13,7 @@ SPREADSHEET_ID = "1w2BDsPHHxgaz6PJhoPLXdh0UQJplA6rr42wLoLQIM9s"
 
 st.set_page_config(page_title=f"{SYS_TITLE}", layout="centered", initial_sidebar_state="collapsed")
 
-# --- 2. 樣式強化 (佰哥調校：大字號 + 框線 + 護眼綠) ---
+# --- 2. 樣式強化 (佰哥調校：大字號 + 統一高度 + 框線 + 護眼綠) ---
 st.markdown(f"""
 <style>
     /* 1. 頁面間距與護眼背景 */
@@ -30,40 +30,61 @@ st.markdown(f"""
         margin-top: -15px !important; margin-bottom: 12px !important; 
     }}
     
-    /* 3. 所有標籤 (Labels) 加大與加粗 - 核心修正點 */
+    /* 3. 所有標籤 (Labels) 加大與加粗 */
     [data-testid="stWidgetLabel"] p {{
-        font-size: 1.2rem !important; /* 字號加大 */
-        font-weight: 700 !important;   /* 字體加粗 */
-        color: #1e293b !important;   /* 深色文字確保清晰 */
+        font-size: 1.2rem !important;
+        font-weight: 700 !important;
+        color: #1e293b !important;
     }}
 
-    /* 4. 錄入框 (Input Boxes & Selectbox) 設計邊框 - 核心修正點 */
-    .stTextInput input, .stNumberInput input, .stSelectbox [data-baseweb="select"] {{
-        border: 1px solid #1e3a8a !important; /* 深藍色框線 */
-        border_radius: 8px !important;
-        padding: 10px !important;
+    /* 4. 【核心修正】錄入框統一高度與樣式 */
+    /* 文字框、數字框、日期框 */
+    .stTextInput input, .stNumberInput input, .stDateInput input {{
+        height: 48px !important; /* 統一高度 */
+        border: 1px solid #1e3a8a !important;
+        border-radius: 8px !important;
+        padding: 0 10px !important; /* 調整內距確保文字置中 */
         background-color: white !important;
-        transition: all 0.2s ease-in-out;
+        font-size: 1.1rem !important;
     }}
     
-    /* 錄入框點擊時的特效 */
-    .stTextInput input:focus, .stNumberInput input:focus, .stSelectbox [data-baseweb="select"]:focus-within {{
-        border: 2px solid #2563eb !important; /* 加粗藍邊 */
-        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2) !important; /* 藍色光暈 */
+    /* 下拉選單 (Selectbox) 的外層與內層高度統一 */
+    .stSelectbox [data-baseweb="select"] {{
+        height: 48px !important; /* 統一高度 */
+        border: 1px solid #1e3a8a !important;
+        border-radius: 8px !important;
+        background-color: white !important;
+        display: flex;
+        align-items: center; /* 內部文字垂直置中 */
+    }}
+    
+    /* 下拉選單內部文字樣式修正 */
+    .stSelectbox [data-baseweb="select"] > div {{
+        height: 48px !important;
+        display: flex;
+        align-items: center;
+        padding-left: 10px !important;
+        font-size: 1.1rem !important;
     }}
 
-    /* 5. 分頁標籤 (Tabs) 大字優化 */
+    /* 錄入框點擊時的特效 */
+    .stTextInput input:focus, .stNumberInput input:focus, .stDateInput input:focus, .stSelectbox [data-baseweb="select"]:focus-within {{
+        border: 2px solid #2563eb !important;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2) !important;
+    }}
+
+    /* 5. 分頁標籤 (Tabs) */
     .stTabs [data-baseweb="tab-list"] {{ gap: 8px; background-color: rgba(255,255,255,0.5); padding: 5px; }}
     .stTabs [data-baseweb="tab"] {{
         height: 48px; background-color: white; border-radius: 8px; 
         color: #64748b; font-weight: 700; border: 1px solid #e2e8f0;
-        font-size: 1.1rem !important; /* Tabs 字號加大 */
+        font-size: 1.1rem !important;
     }}
     .stTabs [aria-selected="true"] {{
         background-color: #1e3a8a !important; color: white !important;
     }}
 
-    /* 6. 按鈕樣式 */
+    /* 6. 按鈕樣式 (微調高度) */
     div.stButton > button {{ 
         height: 50px !important; width: 100% !important; font-weight: bold !important; font-size: 1.2rem !important;
         background-color: #1e3a8a !important; color: white !important; border-radius: 8px !important;
@@ -119,29 +140,48 @@ def fetch_all_data():
 def get_current_balance(df, pid, prod):
     if df.empty or not pid: return 0
     u_rec = df[(df['病例號/ID'] == str(pid)) & (df['產品項目'] == prod)]
-    # 此處保留您指定的藍圖邏輯
     total_in = pd.to_numeric(u_rec[u_rec['批價內容'].isin(['批價 + 預購', '純預購寄庫'])]['預購總量'], errors='coerce').sum()
     total_out = pd.to_numeric(u_rec[u_rec['批價內容'].isin(['批價 + 預購', '使用前次預購', '使用他人預購'])]['當日批價量'], errors='coerce').sum()
     return int(total_in - total_out)
 
-# --- 5. 介面 (維持佰哥佈局，加入清晰大字效果) ---
+@st.cache_data(ttl=60)
+def get_options():
+    try:
+        ws = ss.worksheet("Settings")
+        data = ws.get_all_values()
+        df = pd.DataFrame(data[1:], columns=[str(h).strip() for h in data[0]])
+        return {
+            "price": [x for x in df["批價內容"].dropna().unique() if x],
+            "hosp": [x for x in df["使用醫院"].dropna().unique() if x],
+            "dept": [x for x in df["使用科別"].dropna().unique() if x],
+            "prod": [x for x in df["產品項目"].dropna().unique() if x],
+            "loc": [x for x in df["使用地點"].dropna().unique() if x] if "使用地點" in df.columns else ["血管攝影室", "開刀房"],
+            "blood": [x for x in df["抽血人員"].dropna().unique() if x],
+            "rep": [x for x in df["跟刀(操作)人員"].dropna().unique() if x]
+        }
+    except: return {"price":["單次批價使用", "批價 + 預購", "使用前次預購", "使用他人預購", "純預購寄庫"], "hosp":[], "dept":[], "prod":["3E PRP"], "loc":[], "blood":[], "rep":[]}
+
+OPT = get_options()
+
+# --- 5. 介面 (維持佰哥佈局，統一錄入框高度) ---
 st.markdown(f'<div class="sys-title">📋 {SYS_TITLE}</div>', unsafe_allow_html=True)
-tab1, tab2, tab3 = st.tabs(["🖋️ 資料錄入", "📊 歷史紀錄", "🔍 預購追蹤"]) # 文字微調更專業
+tab1, tab2, tab3 = st.tabs(["🖋️ 資料錄入", "📊 歷史紀錄", "🔍 預購追蹤"])
 
 with tab1:
-    if "rk_v24" not in st.session_state: st.session_state.rk_v24 = 0
-    rk = st.session_state.rk_v24
+    if "rk_v25" not in st.session_state: st.session_state.rk_v25 = 0
+    rk = st.session_state.rk_v25
     status_msg = st.empty()
     
+    # 區塊 1
     c1, c2, c3 = st.columns(3)
     d_date = c1.date_input("使用日期", value=datetime.now(tw_tz).date(), key=f"d_{rk}")
     d_dr = c2.text_input("醫師姓名", key=f"dr_{rk}")
     d_content = c3.text_input("使用產品內容(含預購）", key=f"cn_{rk}")
     st.markdown("---")
     
-    # 作業區塊 2 (模式與防呆)
+    # 作業區塊 2
     c4, c5, c6 = st.columns(3)
-    d_price = c4.selectbox("批價內容", ["單次批價使用", "批價 + 預購", "使用前次預購", "使用他人預購", "純預購寄庫"], key=f"pr_{rk}")
+    d_price = c4.selectbox("批價內容", OPT.get("price"), key=f"pr_{rk}")
     d_pre_total, d_pre_today, d_qty, can_submit = 0, 0, 0, True
     db_df = fetch_all_data()
 
@@ -167,26 +207,25 @@ with tab1:
 
     # 作業區塊 3 (產品資料)
     c7, c8, c9 = st.columns(3)
-    d_prod = c7.selectbox("產品項目", ["3E PRP", "其他"], key=f"pd_{rk}") # 依 Settings 為準
+    d_prod = c7.selectbox("產品項目", OPT.get("prod"), key=f"pd_{rk}")
     d_spec = c8.text_input("規格", key=f"sp_{rk}")
     d_pname = c9.text_input("病人名", key=f"pn_{rk}")
     
     c10, c11, c12 = st.columns(3)
-    d_hosp = c10.selectbox("使用醫院", ["花蓮慈濟", "門諾醫院"], key=f"hs_{rk}")
+    d_hosp = c10.selectbox("使用醫院", OPT.get("hosp"), key=f"hs_{rk}")
     d_pid = c11.text_input("病例號/ID", key=f"pi_{rk}")
-    d_dept = c12.selectbox("使用科別", ["骨科", "復健科", "神經外科"], key=f"dp_{rk}")
+    d_dept = c12.selectbox("使用科別", OPT.get("dept"), key=f"dp_{rk}")
     
     c13, c14, c15 = st.columns(3)
     d_opname = c13.text_input("手術名稱/部位", key=f"op_{rk}")
-    d_loc = c14.selectbox("使用地點", ["血管攝影室", "開刀房"], key=f"lc_{rk}")
-    d_blood = c15.selectbox("抽血人員", ["佳瑾", "怡君"], key=f"bl_{rk}")
+    d_loc = c14.selectbox("使用地點", OPT.get("loc"), key=f"lc_{rk}")
+    d_blood = c15.selectbox("抽血人員", OPT.get("blood"), key=f"bl_{rk}")
     
     c16, c17, c18 = st.columns(3)
-    d_rep = c16.selectbox("跟刀(操作)人員", ["張家慈", "其他"], key=f"rp_{rk}")
+    d_rep = c16.selectbox("跟刀(操作)人員", OPT.get("rep"), key=f"rp_{rk}")
     
     with c17: d_memo = st.text_area("備註", key=f"me_{rk}", height=45, label_visibility="collapsed")
     with c18:
-        st.markdown("<br>", unsafe_allow_html=True) # 微調按鈕位置
         if st.button("🚀 提交錄入數據", key="sub_btn", disabled=not can_submit):
             try:
                 now_df = fetch_all_data()
@@ -196,9 +235,10 @@ with tab1:
                 else: remain = 0
                 row = [str(d_date), d_price, d_hosp, d_dept, d_dr, d_prod, d_spec, d_qty, d_pre_total, d_pre_today, remain, d_content, d_pname, d_pid, d_opname, d_loc, d_blood, d_rep, d_memo]
                 ss.worksheet("回應試算表").append_row(row, value_input_option='USER_ENTERED')
-                status_msg.success("✅ PRP 資料已成功存檔！"); time.sleep(1); st.cache_data.clear(); st.session_state.rk_v24 += 1; st.rerun()
-            except: status_msg.error("提交異常，請重新點擊")
+                status_msg.success("✅ 資料已成功存檔！"); time.sleep(1); st.cache_data.clear(); st.session_state.rk_v25 += 1; st.rerun()
+            except: status_msg.error("提交異常")
 
+# tab2 & tab3 維持原樣...
 with tab2:
     st.write("### 📋 最近 50 筆錄入紀錄")
     df_h = fetch_all_data()
