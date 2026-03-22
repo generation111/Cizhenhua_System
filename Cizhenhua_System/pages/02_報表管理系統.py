@@ -180,7 +180,7 @@ with tab1:
     st.markdown('<div class="item-l title-c">👤 2. 客戶基本資料</div>', unsafe_allow_html=True)
     r1c1, r1c2, r1c3 = st.columns(3)
     d_date = r1c1.date_input("日期", value=current_date, key=f"dt_{rk}")
-    d_time = r1c2.selectbox("時段", settings["times"], key=f"t_{rk}")
+    d_time = r1c2.selectbox("時段", settings[""請選擇"], key=f"t_{rk}")
     d_rep = r1c3.selectbox("代表", settings["reps"], index=0, key=f"rep_{rk}")
     
     r2c1, r2c2, r2c3 = st.columns(3)
