@@ -17,7 +17,7 @@ st.set_page_config(page_title=f"{SYS_TITLE}", layout="centered", initial_sidebar
 st.markdown(f"""
 <style>
     /* 1. 頁面間距與主題背景 */
-    .block-container {{ padding-top: 5rem !important; padding-bottom: 0.2rem !important; background-color: #f8fafc; }}
+    .block-container {{ padding-top: 3.2rem !important; padding-bottom: 0.2rem !important; background-color: #f8fafc; }}
     
     /* 2. 標題樣式強化 */
     .sys-title {{ 
