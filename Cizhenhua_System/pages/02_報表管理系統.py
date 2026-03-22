@@ -162,8 +162,8 @@ with tab2:
                         "醫院": pending['醫院'].tolist(),
                         "科別": pending['科別'].tolist(),
                         "醫師姓名": pending['醫師姓名'].tolist(),
-                        "推廣產品": pending['產品'].tolist(),
-                        "訪談內容錄入": pending['訪談內容概要'].tolist(),
+                        "推廣產品": pending['推廣產品'].tolist(),
+                        "訪談內容錄入": pending['訪談內容錄入'].tolist(),
                         "主管註記": pending['主管註記'].tolist() if '主管註記' in pending.columns else [""] * len(pending)
                     })
                     
