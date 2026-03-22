@@ -12,18 +12,16 @@ SPREADSHEET_ID = "1w2BDsPHHxgaz6PJhoPLXdh0UQJplA6rr42wLoLQIM9s"
 
 st.set_page_config(page_title=f"{SYS_TITLE}", layout="centered", initial_sidebar_state="collapsed")
 
-# --- 2. 樣式優化 (修正標題切割問題) ---
+# --- 2. 樣式優化 (4.5rem 確保標題不被切割) ---
 st.markdown(f"""
 <style>
-    /* 根據佰哥建議調整至 6rem，確保標題不被切割 */
-    .block-container {{ padding-top: 6rem !important; padding-bottom: 02rem !important; }}
-    
+    .block-container {{ padding-top: 6rem !important; padding-bottom: 0.2rem !important; }}
     .sys-title {{ 
         text-align: center; 
         font-size: 26px !important; 
         font-weight: 850; 
         color: #1E3A8A; 
-        margin-top: -50px !important; /* 配合 padding-top 向上微調 */
+        margin-top: -45px !important; 
         margin-bottom: 25px !important;
         white-space: nowrap; 
     }}
@@ -36,7 +34,7 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. 數據連線核心 ---
+# --- 3. 數據連線 ---
 @st.cache_resource(ttl=60)
 def get_ss():
     try:
@@ -92,56 +90,62 @@ with tab1:
     if "rk_v11" not in st.session_state: st.session_state.rk_v11 = 0
     rk = st.session_state.rk_v11
     
-    # --- 第一區：基本資料 ---
+    # 基本資料
     c1, c2, c3 = st.columns(3)
     d_date = c1.date_input("使用日期", value=datetime.now(tw_tz).date(), key=f"d_{rk}")
     d_dr = c2.text_input("醫師姓名", key=f"dr_{rk}")
     d_content = c3.text_input("使用產品內容(含預購）", key=f"cn_{rk}")
     
-    # --- 第二區：批價邏輯 (圖表5條件) ---
+    # 核心邏輯
     st.markdown("---")
     c4, c5, c6 = st.columns(3)
     d_price = c4.selectbox("批價內容", OPT.get("price"), key=f"pr_{rk}")
     
+    # 邏輯分流與數值初始化
+    d_pre_total = 0
+    d_pre_today = 0
+    d_qty = 1
+
     if d_price == "單次批價使用":
         st.caption("✅ 模式：單次直接批價。")
         d_qty = c5.number_input("數量", min_value=1, value=1, key=f"qt_{rk}")
-        d_pre_total = 0
         d_pre_today = d_qty
         c6.info(f"當日批價量：{d_pre_today}")
+
     elif d_price == "批價 + 預購":
         st.caption("✅ 模式：當日使用並預購。")
         d_pre_total = c5.number_input("預購總量", min_value=1, value=10, key=f"pt_{rk}")
         d_pre_today = c6.number_input("當日批價量", min_value=1, value=1, key=f"py_{rk}")
         d_qty = d_pre_today
+
     elif d_price == "使用前次預購":
         st.warning("⚠️ 模式：扣除前次寄庫。")
         d_pre_today = c5.number_input("當日批價量", min_value=1, value=1, key=f"py_{rk}")
-        d_pre_total = 0
         d_qty = d_pre_today
-        c6.write("")
+        c6.info(f"扣除量：{d_pre_today}")
+
     elif d_price == "使用他人預購":
-        st.error("❗ 模式：跨人扣帳（請註明於備註）。")
+        st.error("❗ 模式：跨人扣帳（請於備註註明）。")
         d_qty = c5.number_input("數量", min_value=1, value=1, key=f"qt_{rk}")
-        d_pre_total = 0
         d_pre_today = d_qty
         c6.info(f"扣除量：{d_pre_today}")
+
     elif d_price == "純預購寄庫":
         st.caption("✅ 模式：純寄庫不批價。")
         d_pre_total = c5.number_input("預購總量", min_value=1, value=10, key=f"pt_{rk}")
-        d_pre_today = 0
         d_qty = 0
         c6.success(f"寄庫：{d_pre_total}")
-    else:
-        d_qty = c5.number_input("數量", min_value=0, value=0, key=f"qt_{rk}")
-        d_pre_total = 0
-        d_pre_today = 0
 
+    # 即時餘量計算與位置調整 (紅框修正)
     d_pre_remain = d_pre_total - d_pre_today
-    st.markdown(f"**💡 即時計算：預購餘量 = {d_pre_remain}**")
+    if d_pre_remain > 0:
+        # 當有正數餘量時，在右側空白區塊下方顯示提示
+        with c6:
+            st.markdown(f"💡 **即時餘量：{d_pre_remain}**")
+    
     st.markdown("---")
 
-    # --- 第三區：產品與位置 ---
+    # 其他輸入欄位
     c7, c8, c9 = st.columns(3)
     d_prod = c7.selectbox("產品項目", OPT.get("prod"), key=f"pd_{rk}")
     d_spec = c8.text_input("規格", key=f"sp_{rk}")
@@ -159,7 +163,7 @@ with tab1:
     
     c16, c17, c18 = st.columns(3)
     d_rep = c16.selectbox("跟刀(操作)人員", OPT.get("rep"), key=f"rp_{rk}")
-    d_memo = c17.text_area("備註", key=f"me_{rk}", height=40, placeholder="備註內容...", label_visibility="collapsed")
+    d_memo = c17.text_area("備註", key=f"me_{rk}", height=40, placeholder="備註...", label_visibility="collapsed")
     
     with c18:
         if st.button("🚀 提交數據", key="submit_btn"):
@@ -172,14 +176,14 @@ with tab1:
                         d_content, d_pname, d_pid, d_opname, d_loc, d_blood, d_rep, d_memo
                     ]
                     ws_res.append_row(row, value_input_option='USER_ENTERED')
-                    st.toast(f"✅ 存檔成功！餘量：{d_pre_remain}")
+                    st.toast(f"✅ 存檔成功！")
                     time.sleep(1)
                     st.session_state.rk_v11 += 1
                     st.cache_data.clear() 
                     st.rerun()
-                except Exception as e: st.error(f"錯誤: {e}")
+                except Exception as e: st.error(f"寫入失敗: {e}")
 
-# --- 歷史與預購分頁 ---
+# 歷史與預購分頁維持原邏輯
 with tab2:
     df_h = fetch_all_data()
     if not df_h.empty:
