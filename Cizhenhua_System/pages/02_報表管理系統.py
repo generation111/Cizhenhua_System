@@ -210,46 +210,39 @@ with tab1:
 
 # --- Tab 2: 審閱管理 (標題更名 + 徹底移除過濾器 + 保留全選) ---
 with tab2:
-    st.markdown("### 🔍 審閱管理 (批量操作模式)")
-    if ss:
-        try:
-            ws = ss.worksheet("表單回應 1")
-            data = ws.get_all_records()
-            all_df = pd.DataFrame(data)
-            if not all_df.empty and '審閱狀態' in all_df.columns:
-                pending = all_df[all_df['審閱狀態'] == '待審閱'].copy()
-                if not pending.empty:
-                    # 保留全選功能
-                    select_all = st.checkbox("✅ 全選所有待處理項目", key="global_select")
-                    
-                    display_df = pd.DataFrame({
-                        "單選": [select_all] * len(pending),
-                        "狀態": pending['審閱狀態'].tolist(),
-                        "醫院": pending['醫院'].tolist(),
-                        "科別": pending['科別'].tolist(),
-                        "醫師": pending['醫師姓名'].tolist(),
-                        "產品": pending['推廣產品'].tolist(),
-                        "內容": pending['訪談內容錄入'].tolist(),
-                        "主管註記": pending['主管註記'].tolist() if '主管註記' in pending.columns else [""] * len(pending)
-                    })
-                    
-                    # 徹底移除所有欄位的過濾功能
-                    edited_df = st.data_editor(
-                        display_df, 
-                        column_config={
-                            "單選": st.column_config.CheckboxColumn("單選", width="small"),
-                            "主管註記": st.column_config.TextColumn("主管註記"),
-                            "狀態": st.column_config.TextColumn("狀態", disabled=True),
-                            "醫院": st.column_config.TextColumn("醫院", disabled=True),
-                            "科別": st.column_config.TextColumn("科別", disabled=True),
-                            "醫師": st.column_config.TextColumn("醫師", disabled=True),
-                            "產品": st.column_config.TextColumn("產品", disabled=True),
-                            "內容": st.column_config.TextColumn("內容", width="large", disabled=True)
-                        }, 
-                        hide_index=True, 
-                        key="editor_tab2", 
-                        use_container_width=True
-                    )
+    st.markdown("""
+    <style>
+        /* 強制隱藏 Data Editor 表頭的所有操作按鈕 (過濾、排序) */
+        button[title="Filter column"], 
+        button[title="Sort column"],
+        .st-emotion-cache-1pxm69b e1nzilvr3 /* 針對不同版本的內部 class 鎖定 */
+        {
+            display: none !important;
+        }
+        
+        /* 防止滑鼠移過時顯示隱藏的按鈕空間 */
+        th div div {
+            pointer-events: none !important;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
+# --- 接下來才是您的表格代碼 ---
+edited_df = st.data_editor(
+    display_df, 
+    column_config={
+        "單選": st.column_config.CheckboxColumn("單選", width="small"),
+        "主管註記": st.column_config.TextColumn("主管註記"),
+        "狀態": st.column_config.TextColumn("狀態", disabled=True),
+        "醫院": st.column_config.TextColumn("醫院", disabled=True),
+        "科別": st.column_config.TextColumn("科別", disabled=True),
+        "醫師": st.column_config.TextColumn("醫師", disabled=True),
+        "產品": st.column_config.TextColumn("產品", disabled=True),
+        "內容": st.column_config.TextColumn("內容", width="large", disabled=True)
+    }, 
+    hide_index=True, 
+    key="editor_tab2", 
+    use_container_width=True
                     
                     # 隱藏 Streamlit Data Editor 自帶過濾器的黑科技
                     st.markdown("""<style>button[title="Filter column"], button[title="Sort column"] { display: none !important; }</style>""", unsafe_allow_html=True)
