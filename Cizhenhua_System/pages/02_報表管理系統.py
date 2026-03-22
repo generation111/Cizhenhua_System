@@ -17,7 +17,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed" 
 )
 
-# --- 2. UI 樣式優化 ---
+# --- 2. UI 樣式與【徹底移除篩選功能】CSS ---
 st.markdown("""
 <style>
     .block-container { padding-top: 2rem !important; max-width: 950px !important; background-color: #F8FAFC !important; }
@@ -36,15 +36,28 @@ st.markdown("""
     textarea { height: 42px !important; font-size: 1.1rem !important; padding: 8px !important; line-height: 1.2 !important; }
     .stButton>button[kind="primary"] { height: 45px !important; background-color: #2B6CB0 !important; color: white !important; }
     footer { visibility: hidden; }
-    
-    /* 核心：徹底隱藏 Data Editor 表頭的過濾與排序按鈕 */
-    [data-testid="stDataEditor"] button[title="Filter column"], 
-    [data-testid="stDataEditor"] button[title="Sort column"] {
+
+    /* --- 強力修正：移除表格篩選按鈕 --- */
+    /* 1. 隱藏表頭內所有按鈕 (過濾器、排序箭頭、選單) */
+    [data-testid="stDataEditor"] thead button,
+    [data-testid="stDataEditor"] [title="Filter column"],
+    [data-testid="stDataEditor"] [title="Sort column"],
+    [data-testid="stDataEditor"] svg[class^="st-"] {
         display: none !important;
+        visibility: hidden !important;
+        width: 0 !important;
+        height: 0 !important;
     }
-    /* 移除表頭的可點擊互動感 */
-    [data-testid="stDataEditor"] th div {
+    
+    /* 2. 移除表頭的可點擊狀態與滑過效果 */
+    [data-testid="stDataEditor"] th > div {
         pointer-events: none !important;
+        cursor: default !important;
+    }
+
+    /* 3. 確保單選勾選框所在的標題不會顯示排序圖示 */
+    [data-testid="stDataEditor"] th:first-child div {
+        justify-content: center !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -218,7 +231,7 @@ with tab1:
     if b2.button("🧹 清空", use_container_width=True):
         st.session_state.rk += 1; st.session_state.cp = None; st.rerun()
 
-# --- Tab 2: 審閱管理 (標題更換、移除篩選、保留全選) ---
+# --- Tab 2: 審閱管理 (已強化 CSS 封鎖篩選按鈕) ---
 with tab2:
     st.markdown("### 🔍 審閱管理 (批量核准模式)")
     if ss:
@@ -242,7 +255,6 @@ with tab2:
                         "主管註記": pending['主管註記'].tolist() if '主管註記' in pending.columns else [""] * len(pending)
                     })
                     
-                    # 使用 st.data_editor，並確保 column_config 與 CSS 同步作用
                     edited_df = st.data_editor(
                         display_df, 
                         column_config={
@@ -257,7 +269,8 @@ with tab2:
                         }, 
                         hide_index=True, 
                         key="editor_tab2", 
-                        use_container_width=True
+                        use_container_width=True,
+                        num_rows="fixed"
                     )
 
                     if st.button("🚀 批次提交審閱項目", type="primary", use_container_width=True):
@@ -269,7 +282,6 @@ with tab2:
                                     ws.update_cell(row_idx, 9, "已審閱")
                                     ws.update_cell(row_idx, 10, edited_df.loc[i, "主管註記"])
                                 st.success("✅ 審閱與註記同步完成！"); time.sleep(1); st.cache_data.clear(); st.rerun()
-                        else: st.warning("請先勾選項目。")
                 else: st.success("🎉 目前無待審閱資料。")
         except Exception as e: st.error(f"連線異常: {e}")
 
