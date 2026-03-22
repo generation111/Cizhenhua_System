@@ -45,7 +45,7 @@ st.markdown(f"""
     div[data-baseweb="textarea"] {{
         border: 1px solid #1e3a8a !important;
         border-radius: 8px !important;
-        height: 52px !important; 
+        height: 48px !important; 
         background-color: white !important;
         box-sizing: border-box !important;
     }}
