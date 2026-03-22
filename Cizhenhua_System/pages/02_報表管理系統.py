@@ -173,7 +173,7 @@ with tab2:
                         column_config={
                             "選取": st.column_config.CheckboxColumn("核准", width="small"),
                             "審閱狀態": st.column_config.TextColumn("狀態", width="small", disabled=True),
-                            "醫院": st.column_config.TextColumn("醫院", width="medium", disabled=True),
+                            "醫院": st.column_config.TextColumn("醫院", width="small", disabled=True),
                             "科別": st.column_config.TextColumn("科別", width="small", disabled=True),
                             "醫師姓名": st.column_config.TextColumn("醫師", width="small", disabled=True),
                             "推廣產品": st.column_config.TextColumn("產品", width="small", disabled=True),
