@@ -42,7 +42,7 @@ st.markdown("""
     }
 
     input, .stSelectbox div[data-baseweb="select"] > div {
-        font-size: 1.2rem !important;
+        font-size: 1rem !important;
         height: 40px !important;
         line-height: 40px !important;
     }
