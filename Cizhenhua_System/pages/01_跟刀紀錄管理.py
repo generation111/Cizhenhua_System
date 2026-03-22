@@ -18,10 +18,10 @@ st.markdown(f"""
 <style>
     .block-container {{ padding-top: 3.3rem !important; background-color: #F0F9F0 !important; }}
     .stApp {{ background-color: #F0F9F0 !important; }}
-    .sys-title {{ text-align: center; font-size: 36px !important; font-weight: 900; color: #1e3a8a; margin-bottom: 20px !important; }}
+    .sys-title {{ text-align: center; font-size: 28px !important; font-weight: 900; color: #1e3a8a; margin-bottom: 20px !important; }}
 
     /* 統一標籤樣式 */
-    [data-testid="stWidgetLabel"] p {{ font-size: 1.1rem !important; font-weight: 700 !important; color: #1e293b !important; }}
+    [data-testid="stWidgetLabel"] p {{ font-size: 1.6rem !important; font-weight: 700 !important; color: #1e293b !important; }}
 
     /* 【核心框線技術】解決數量框線不見的問題 - 使用 outline 代替 border */
     div[data-baseweb="input"], div[data-baseweb="select"], div[data-baseweb="textarea"] {{
