@@ -16,7 +16,7 @@ st.set_page_config(page_title=f"{SYS_TITLE}", layout="centered", initial_sidebar
 st.markdown(f"""
 <style>
     /* 1. 調整整體頁面頂部間距 */
-    .block-container {{ padding-top: 6rem !important; padding-bottom: 1rem !important; }}
+    .block-container {{ padding-top: 4.5rem !important; padding-bottom: 1rem !important; }}
     
     /* 2. 調整標題位置與下方間距 */
     .sys-title {{ 
@@ -24,8 +24,8 @@ st.markdown(f"""
         font-size: 26px !important; 
         font-weight: 850; 
         color: #1E3A8A; 
-        margin-top: -65px !important; /* 配合 6rem 向上位移確保垂直置中 */
-        margin-bottom: 15px !important; /* 這是標題下緣與作業區的間距參數 */
+        margin-top: -30px !important; /* 配合 6rem 向上位移確保垂直置中 */
+        margin-bottom: 5px !important; /* 這是標題下緣與作業區的間距參數 */
         white-space: nowrap; 
     }}
     
