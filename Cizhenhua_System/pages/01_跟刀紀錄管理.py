@@ -32,8 +32,8 @@ st.markdown(f"""
     
     /* 3. 所有標籤 (Labels) 加大與加粗 */
     [data-testid="stWidgetLabel"] p {{
-        font-size: 1.4rem !important;
-        font-weight: 600 !important;
+        font-size: 1.1rem !important;
+        font-weight: 700 !important;
         color: #1e293b !important;
     }}
 
