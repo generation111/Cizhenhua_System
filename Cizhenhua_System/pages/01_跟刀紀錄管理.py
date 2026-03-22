@@ -25,7 +25,7 @@ st.markdown(f"""
         font-weight: 850; 
         color: #1E3A8A; 
         margin-top: -65px !important; /* 配合 6rem 向上位移確保垂直置中 */
-        margin-bottom: 35px !important; /* 這是標題下緣與作業區的間距參數 */
+        margin-bottom: 15px !important; /* 這是標題下緣與作業區的間距參數 */
         white-space: nowrap; 
     }}
     
