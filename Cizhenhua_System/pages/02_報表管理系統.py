@@ -258,84 +258,154 @@ with tab1:
     if b2.button("🧹 清空", use_container_width=True):
         st.session_state.rk += 1; st.session_state.cp = None; st.rerun()
 
-# --- Tab 2: 審閱管理 (精準修復欄位對齊 + 批量處理) ---
+# --- Tab 2: 審閱管理 (精準對應標題 + 欄寬優化) ---
+
 with tab2:
+
     st.markdown("### 🔍 審閱管理 (批量操作模式)")
+
     
+
     if ss:
+
         try:
+
             # 確保獲取最新資料
+
             ws = ss.worksheet("表單回應 1")
+
             data = ws.get_all_records()
+
             all_df = pd.DataFrame(data)
+
             
+
             if not all_df.empty and '審閱狀態' in all_df.columns:
+
                 # 篩選待審閱項目
+
                 pending = all_df[all_df['審閱狀態'] == '待審閱'].copy()
+
                 
+
                 if not pending.empty:
+
                     # 全選開關
+
                     select_all = st.checkbox("✅ 全選所有項目", key="global_select")
+
                     
-                    # 構建 DataFrame
+
+                    # 根據您的截圖精準構建 DataFrame (Key 必須與試算表第一行文字完全一致)
+
                     display_df = pd.DataFrame({
+
                         "選取": [select_all] * len(pending),
-                        "狀態": pending['審閱狀態'].tolist(),
+
+                        "審閱狀態": pending['審閱狀態'].tolist(),
+
                         "醫院": pending['醫院'].tolist(),
+
                         "科別": pending['科別'].tolist(),
-                        "醫師": pending['醫師姓名'].tolist(),
-                        "產品": pending['產品'].tolist(),
-                        "訪談內容錄入": pending['訪談內容概要'].tolist(), # 對應試算表 I 欄
-                        "主管註記": pending['主管註記'].tolist() if '主管註記' in pending.columns else [""] * len(pending) # 對應試算表 J 欄
+
+                        "醫師姓名": pending['醫師姓名'].tolist(),
+
+                        "推廣產品": pending['推廣產品'].tolist(),  # 對應截圖中的「推廣產品」
+
+                        "訪談內容錄入": pending['訪談內容錄入'].tolist(),  # 對應截圖中的「訪談內容錄入」
+
+                        "主管註記": pending['主管註記'].tolist() if '主管註記' in pending.columns else [""] * len(pending)
+
                     })
+
                     
-                    # 使用 Data Editor 呈現
+
+                    # 使用 Data Editor 呈現，移除固定 width 讓其自動分配或手動調整
+
                     edited_df = st.data_editor(
+
                         display_df,
+
                         column_config={
+
                             "選取": st.column_config.CheckboxColumn("核准", width="small"),
-                            "狀態": st.column_config.TextColumn("狀態", width="small", disabled=True),
+
+                            "審閱狀態": st.column_config.TextColumn("狀態", width="small", disabled=True),
+
                             "醫院": st.column_config.TextColumn("醫院", disabled=True),
+
                             "科別": st.column_config.TextColumn("科別", disabled=True),
-                            "醫師": st.column_config.TextColumn("醫師", disabled=True),
-                            "產品": st.column_config.TextColumn("產品", disabled=True),
+
+                            "醫師姓名": st.column_config.TextColumn("醫師姓名", disabled=True),
+
+                            "推廣產品": st.column_config.TextColumn("推廣產品", disabled=True),
+
                             "訪談內容錄入": st.column_config.TextColumn("訪談內容錄入", width="large", disabled=True),
-                            "主管註記": st.column_config.TextColumn("主管註記", width="medium")
+
+                            "主管註記": st.column_config.TextColumn("主管註記")
+
                         },
+
                         hide_index=True,
+
                         key="editor_tab2",
+
                         use_container_width=True
+
                     )
+
                     
+
                     if st.button("🚀 批次提交核准項目", type="primary", use_container_width=True):
-                        # 篩選被勾選的行
+
                         selected_rows = edited_df[edited_df["選取"] == True]
+
                         
+
                         if selected_rows.empty:
+
                             st.warning("請勾選要核准的項目。")
+
                         else:
+
                             with st.spinner(f"正在處理 {len(selected_rows)} 筆資料..."):
-                                # 逐一更新試算表
-                                ws = ss.worksheet("表單回應 1")
+
                                 for i in selected_rows.index:
+
                                     # 取得原始試算表行號
+
                                     row_idx = pending.index[i] + 2
+
                                     
-                                    # 執行更新：I 欄 (9) 狀態改為「已核准」，J 欄 (10) 寫入註記
+
+                                    # 執行更新：I 欄 (9) 狀態改為「已審閱」，J 欄 (10) 寫入註記
+
                                     ws.update_cell(row_idx, 9, "已核准")
+
                                     ws.update_cell(row_idx, 10, edited_df.loc[i, "主管註記"])
+
                                 
+
                                 st.success(f"✅ 成功完成 {len(selected_rows)} 筆審閱！")
+
                                 time.sleep(1)
-                                # 清除快取並重整
+
                                 st.cache_data.clear()
+
                                 st.rerun()
+
                 else:
+
                     st.success("🎉 目前無待審閱資料。")
+
             else:
+
                 st.info("尚未有任何錄入數據。")
+
                 
+
         except Exception as e:
+
             st.error(f"審閱系統執行錯誤: {e}")
 
 # --- Tab 3: 歷史報表 (精準修復自動欄寬) ---
@@ -349,7 +419,7 @@ with tab3:
             
             if not all_data.empty:
                 # 呈現表格，讓系統自動調整欄寬
-                st.dataframe(all_data.sort_values(by="時間戳記", ascending=False), use_container_width=True)
+                st.dataframe(all_data.sort_values(by="日期", ascending=False), use_container_width=True)
             else:
                 st.info("目前無任何歷史記錄。")
         except: st.error("報表讀取失敗")
