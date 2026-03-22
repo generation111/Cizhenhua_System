@@ -60,7 +60,7 @@ components.html("""
 </script>
 """, height=0)
 
-# --- 4. 數據連線 (原封不動) ---
+# --- 4. 數據連線 ---
 @st.cache_resource(ttl=60)
 def get_ss():
     try:
@@ -78,7 +78,6 @@ def get_settings():
         ws = ss.worksheet("Settings").get_all_values()
         df = pd.DataFrame(ws[1:], columns=ws[0])
         def cln(c): return [str(x).strip() for x in df[c].unique() if x and str(x).strip() != "請選擇"]
-        # 修改點 3：確保時段包含「請選擇」
         return {"times": ["請選擇", "上午", "下午", "晚上"], "reps": cln("代表"), "hosps": cln("醫院"), "depts": cln("科別")}
     except: return d
 
@@ -107,17 +106,14 @@ with tab1:
     if "rk" not in st.session_state: st.session_state.rk = 0
     if "cp" not in st.session_state: st.session_state.cp = None
     rk = st.session_state.rk
-    
     st.markdown('<div class="item-l title-p">🚀 1. 產品快速選取</div>', unsafe_allow_html=True)
     p_cols = st.columns(5)
     exp_placeholder = st.container()
-
     st.markdown('<div class="item-l title-c">👤 2. 客戶基本資料</div>', unsafe_allow_html=True)
     r1c1, r1c2, r1c3 = st.columns(3)
     d_date = r1c1.date_input("日期", value=current_date, key=f"dt_{rk}")
     d_time = r1c2.selectbox("時段", settings["times"], key=f"t_{rk}")
     d_rep = r1c3.selectbox("代表", settings["reps"], index=0, key=f"rep_{rk}")
-    
     r2c1, r2c2, r2c3 = st.columns(3)
     d_hosp = r2c1.selectbox("醫院", ["請選擇"] + settings["hosps"], key=f"h_{rk}")
     d_dept = r2c2.selectbox("科別", ["請選擇"] + settings["depts"], key=f"d_{rk}")
@@ -129,7 +125,6 @@ with tab1:
             h_s = d_hosp if d_hosp != "請選擇" else "醫院"
             dept_s = d_dept if d_dept != "請選擇" else "科"
             dr_s = f"{d_dr}醫師" if d_dr else "醫師"
-            # 修改點 1：自動生成拜訪描述格式調整
             st.session_state[f"n_{rk}"] = f"拜訪 {h_s} {dept_s} {dr_s}，介紹【{p}】臨床應用說明。"
             st.rerun()
 
@@ -141,7 +136,6 @@ with tab1:
 
     st.markdown('<div class="item-l title-n">✍️ 3. 訪談內容錄入</div>', unsafe_allow_html=True)
     f_note = st.text_area("內容錄入", key=f"n_{rk}", label_visibility="collapsed")
-    
     b1, b2 = st.columns([4, 1])
     if b1.button("🚀 提交同步記錄", type="primary", use_container_width=True):
         if f_note and ss:
@@ -152,7 +146,7 @@ with tab1:
     if b2.button("🧹 清空", use_container_width=True):
         st.session_state.rk += 1; st.session_state.cp = None; st.rerun()
 
-# --- Tab 2: 審閱管理 ---
+# --- Tab 2: 審閱管理 (移除篩選功能，純粹呈現) ---
 with tab2:
     st.markdown("### 🔍 審閱管理 (批量操作模式)")
     if ss:
@@ -160,10 +154,15 @@ with tab2:
             ws = ss.worksheet("表單回應 1")
             data = ws.get_all_records()
             all_df = pd.DataFrame(data)
+            
             if not all_df.empty and '審閱狀態' in all_df.columns:
+                # 僅篩選「待審閱」的原始數據，不進行欄位篩選 UI 展示
                 pending = all_df[all_df['審閱狀態'] == '待審閱'].copy()
+                
                 if not pending.empty:
-                    select_all = st.checkbox("✅ 全選所有項目", key="global_select")
+                    select_all = st.checkbox("✅ 全選所有待處理項目", key="global_select")
+                    
+                    # 構建顯示表格
                     display_df = pd.DataFrame({
                         "選取": [select_all] * len(pending),
                         "審閱狀態": pending['審閱狀態'].tolist(),
@@ -174,19 +173,40 @@ with tab2:
                         "訪談內容錄入": pending['訪談內容錄入'].tolist(),
                         "主管註記": pending['主管註記'].tolist() if '主管註記' in pending.columns else [""] * len(pending)
                     })
-                    edited_df = st.data_editor(display_df, column_config={"選取": st.column_config.CheckboxColumn("核准", width="small")}, hide_index=True, key="editor_tab2", use_container_width=True)
+                    
+                    # 使用 Data Editor，僅開放選取與註記編輯
+                    edited_df = st.data_editor(
+                        display_df, 
+                        column_config={
+                            "選取": st.column_config.CheckboxColumn("核准", width="small"),
+                            "審閱狀態": st.column_config.TextColumn("狀態", disabled=True),
+                            "醫院": st.column_config.TextColumn("醫院", disabled=True),
+                            "科別": st.column_config.TextColumn("科別", disabled=True),
+                            "醫師姓名": st.column_config.TextColumn("醫師姓名", disabled=True),
+                            "推廣產品": st.column_config.TextColumn("推廣產品", disabled=True),
+                            "訪談內容錄入": st.column_config.TextColumn("訪談內容錄入", width="large", disabled=True),
+                            "主管註記": st.column_config.TextColumn("主管註記")
+                        }, 
+                        hide_index=True, 
+                        key="editor_tab2", 
+                        use_container_width=True
+                    )
+                    
                     if st.button("🚀 批次提交核准項目", type="primary", use_container_width=True):
                         selected_rows = edited_df[edited_df["選取"] == True]
                         if not selected_rows.empty:
-                            with st.spinner("處理中..."):
+                            with st.spinner("更新中..."):
                                 for i in selected_rows.index:
                                     row_idx = pending.index[i] + 2
-                                    # 修改點 2：更新為「已審閱」
                                     ws.update_cell(row_idx, 9, "已審閱")
                                     ws.update_cell(row_idx, 10, edited_df.loc[i, "主管註記"])
                                 st.success("✅ 審閱完成！"); time.sleep(1); st.cache_data.clear(); st.rerun()
-                else: st.success("🎉 目前無待審閱資料。")
-        except Exception as e: st.error(f"錯誤: {e}")
+                        else:
+                            st.warning("請先勾選項目。")
+                else:
+                    st.success("🎉 目前無待審閱資料。")
+        except Exception as e:
+            st.error(f"錯誤: {e}")
 
 # --- Tab 3: 歷史報表 ---
 with tab3:
@@ -196,9 +216,9 @@ with tab3:
             ws = ss.worksheet("表單回應 1")
             all_data = pd.DataFrame(ws.get_all_records())
             if not all_data.empty:
-                # 修改點 4：隱藏時間戳記欄位
                 if "時間戳記" in all_data.columns:
                     all_data = all_data.drop(columns=["時間戳記"])
                 st.dataframe(all_data.sort_values(by="日期", ascending=False), use_container_width=True)
-            else: st.info("目前無歷史記錄。")
+            else:
+                st.info("目前無歷史記錄。")
         except: st.error("報表讀取失敗")
