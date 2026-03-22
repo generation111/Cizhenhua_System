@@ -16,7 +16,7 @@ st.set_page_config(page_title=f"{SYS_TITLE}", layout="centered", initial_sidebar
 st.markdown(f"""
 <style>
     /* 1. 調整整體頁面頂部間距 (佰哥調校版) */
-    .block-container {{ padding-top: 4.5rem !important; padding-bottom: 0.2rem !important; }}
+    .block-container {{ padding-top: 5rem !important; padding-bottom: 0.2rem !important; }}
     
     /* 2. 調整標題位置與下方間距 (佰哥調校版) */
     .sys-title {{ 
