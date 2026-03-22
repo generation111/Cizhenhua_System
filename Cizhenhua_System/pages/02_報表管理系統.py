@@ -17,7 +17,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed" 
 )
 
-# --- 2. UI 樣式優化 (Page 1 鐵律，原封不動) ---
+# --- 2. UI 樣式優化 ---
 st.markdown("""
 <style>
     .block-container { padding-top: 2rem !important; max-width: 950px !important; background-color: #F8FAFC !important; }
@@ -39,7 +39,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. 手勢滑動偵測腳本 (原封不動) ---
+# --- 3. 手勢滑動偵測腳本 ---
 components.html("""
 <script>
     const doc = window.parent.document;
@@ -107,8 +107,7 @@ with tab1:
     if "cp" not in st.session_state: st.session_state.cp = None
     rk = st.session_state.rk
     st.markdown('<div class="item-l title-p">🚀 1. 產品快速選取</div>', unsafe_allow_html=True)
-    p_cols = st.columns(5)
-    exp_placeholder = st.container()
+    p_cols = st.columns(5); exp_placeholder = st.container()
     st.markdown('<div class="item-l title-c">👤 2. 客戶基本資料</div>', unsafe_allow_html=True)
     r1c1, r1c2, r1c3 = st.columns(3)
     d_date = r1c1.date_input("日期", value=current_date, key=f"dt_{rk}")
@@ -146,7 +145,7 @@ with tab1:
     if b2.button("🧹 清空", use_container_width=True):
         st.session_state.rk += 1; st.session_state.cp = None; st.rerun()
 
-# --- Tab 2: 審閱管理 (移除篩選功能，純粹呈現) ---
+# --- Tab 2: 審閱管理 (恢復全選 + 標題更名為「單選」) ---
 with tab2:
     st.markdown("### 🔍 審閱管理 (批量操作模式)")
     if ss:
@@ -156,13 +155,12 @@ with tab2:
             all_df = pd.DataFrame(data)
             
             if not all_df.empty and '審閱狀態' in all_df.columns:
-                # 僅篩選「待審閱」的原始數據，不進行欄位篩選 UI 展示
                 pending = all_df[all_df['審閱狀態'] == '待審閱'].copy()
                 
                 if not pending.empty:
+                    # 恢復全選勾選框邏輯
                     select_all = st.checkbox("✅ 全選所有待處理項目", key="global_select")
                     
-                    # 構建顯示表格
                     display_df = pd.DataFrame({
                         "選取": [select_all] * len(pending),
                         "審閱狀態": pending['審閱狀態'].tolist(),
@@ -174,11 +172,11 @@ with tab2:
                         "主管註記": pending['主管註記'].tolist() if '主管註記' in pending.columns else [""] * len(pending)
                     })
                     
-                    # 使用 Data Editor，僅開放選取與註記編輯
+                    # 將標題「核准」改為「單選」
                     edited_df = st.data_editor(
                         display_df, 
                         column_config={
-                            "選取": st.column_config.CheckboxColumn("核准", width="small"),
+                            "選取": st.column_config.CheckboxColumn("單選", width="small"),
                             "審閱狀態": st.column_config.TextColumn("狀態", disabled=True),
                             "醫院": st.column_config.TextColumn("醫院", disabled=True),
                             "科別": st.column_config.TextColumn("科別", disabled=True),
@@ -192,17 +190,18 @@ with tab2:
                         use_container_width=True
                     )
                     
-                    if st.button("🚀 批次提交核准項目", type="primary", use_container_width=True):
+                    if st.button("🚀 批次提交審閱項目", type="primary", use_container_width=True):
                         selected_rows = edited_df[edited_df["選取"] == True]
                         if not selected_rows.empty:
-                            with st.spinner("更新中..."):
+                            with st.spinner(f"正在處理 {len(selected_rows)} 筆資料..."):
                                 for i in selected_rows.index:
                                     row_idx = pending.index[i] + 2
                                     ws.update_cell(row_idx, 9, "已審閱")
                                     ws.update_cell(row_idx, 10, edited_df.loc[i, "主管註記"])
-                                st.success("✅ 審閱完成！"); time.sleep(1); st.cache_data.clear(); st.rerun()
+                                st.success(f"✅ 成功完成 {len(selected_rows)} 筆審閱！")
+                                time.sleep(1); st.cache_data.clear(); st.rerun()
                         else:
-                            st.warning("請先勾選項目。")
+                            st.warning("請勾選項目。")
                 else:
                     st.success("🎉 目前無待審閱資料。")
         except Exception as e:
