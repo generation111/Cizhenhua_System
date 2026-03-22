@@ -178,7 +178,7 @@ with tab2:
                             "醫師姓名": st.column_config.TextColumn("醫師", width="small", disabled=True),
                             "推廣產品": st.column_config.TextColumn("產品", width="small", disabled=True),
                             "訪談內容錄入": st.column_config.TextColumn("訪談內容錄入", width="large", disabled=True),
-                            "主管註記": st.column_config.TextColumn("主管註記", width="medium")
+                            "主管註記": st.column_config.TextColumn("主管註記", width="small")
                         },
                         hide_index=True,
                         key="editor_tab2",
