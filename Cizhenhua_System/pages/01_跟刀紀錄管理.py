@@ -13,7 +13,7 @@ SPREADSHEET_ID = "1w2BDsPHHxgaz6PJhoPLXdh0UQJplA6rr42wLoLQIM9s"
 
 st.set_page_config(page_title=f"{SYS_TITLE}", layout="centered", initial_sidebar_state="collapsed")
 
-# --- 2. 樣式精修 (數量框線修復 + 備註高度減半) ---
+# --- 2. 樣式終極精修 (專攻數量框邊框與備註高度) ---
 st.markdown(f"""
 <style>
     /* 1. 頁面基礎與護眼背景 */
@@ -35,54 +35,58 @@ st.markdown(f"""
         font-size: 1.1rem !important;
         font-weight: 700 !important;
         color: #1e293b !important;
-        border: none !important; 
         margin-bottom: 5px !important;
     }}
 
-    /* 4. 【框線與高度核心修復】 */
-    /* 統一所有錄入框容器邊框 (TextInput, NumberInput, DateInput, Selectbox, TextArea) */
+    /* 4. 【數量框與錄入框終極修復】 */
+    /* 鎖定所有輸入元件的底層容器，強制畫出邊框 */
     div[data-baseweb="input"], 
     div[data-baseweb="select"],
     div[data-baseweb="textarea"] {{
         border: 1px solid #1e3a8a !important;
         border-radius: 8px !important;
-        height: 48px !important; /* 全部強制統一 48px */
+        height: 48px !important; 
         background-color: white !important;
-        overflow: hidden !important;
+        box-sizing: border-box !important;
     }}
 
-    /* 針對數量框 (NumberInput) 的特殊處理：確保內部微調按鈕不遮擋框線 */
+    /* 針對數量框 (NumberInput) 的按鈕與輸入區進行內部校正 */
     .stNumberInput div[data-baseweb="input"] {{
-        display: flex !important;
-        align-items: center !important;
+        overflow: hidden !important; /* 防止內容撐破邊框 */
+    }}
+    
+    .stNumberInput input {{
+        height: 44px !important; /* 稍微縮小確保不壓到上下框線 */
+        border: none !important;
     }}
 
-    /* 針對備註 (TextArea) 高度減半 */
+    /* 針對備註 (TextArea) 高度減半並修正框線 */
     .stTextArea div[data-baseweb="textarea"] {{
-        height: 48px !important; /* 高度減半，與錄入框一致 */
+        height: 48px !important; 
     }}
     .stTextArea textarea {{
-        height: 48px !important;
-        min-height: 48px !important;
-        padding: 8px 10px !important;
-        font-size: 1.1rem !important;
-        border: none !important;
-        background-color: transparent !important;
-    }}
-
-    /* 移除日期元件多餘邊框 */
-    .stDateInput > div {{ border: none !important; }}
-
-    /* 內部輸入文字對齊 */
-    .stTextInput input, .stNumberInput input, .stDateInput input {{
         height: 46px !important;
+        min-height: 46px !important;
+        padding: 8px 10px !important;
         font-size: 1.1rem !important;
         border: none !important;
         outline: none !important;
         background-color: transparent !important;
     }}
 
-    /* 下拉選單文字對齊 */
+    /* 移除日期元件的重複干擾 */
+    .stDateInput > div {{ border: none !important; }}
+    .stDateInput div[data-baseweb="input"] {{ border: 1px solid #1e3a8a !important; }}
+
+    /* 通用輸入文字垂直置中 */
+    .stTextInput input, .stDateInput input {{
+        height: 46px !important;
+        font-size: 1.1rem !important;
+        background-color: transparent !important;
+        border: none !important;
+    }}
+
+    /* 下拉選單文字垂直置中 */
     .stSelectbox [data-baseweb="select"] > div {{
         height: 46px !important;
         display: flex;
@@ -90,14 +94,14 @@ st.markdown(f"""
         padding-left: 10px !important;
     }}
 
-    /* 5. 移除分隔線 */
+    /* 5. 移除分隔線與頁尾 */
     hr {{ display: none !important; }}
+    footer {{visibility: hidden;}}
 
-    /* 6. 分頁標籤 (Tabs) */
+    /* 6. 分頁標籤 */
     .stTabs [data-baseweb="tab"] {{
         height: 48px; background-color: white; border-radius: 8px; 
         color: #64748b; font-weight: 700; border: 1px solid #e2e8f0;
-        font-size: 1.1rem !important;
     }}
     .stTabs [aria-selected="true"] {{
         background-color: #1e3a8a !important; color: white !important;
@@ -105,15 +109,13 @@ st.markdown(f"""
 
     /* 7. 提交按鈕 */
     div.stButton > button {{ 
-        height: 50px !important; width: 100% !important; font-weight: bold !important; font-size: 1.2rem !important;
-        background-color: #1e3a8a !important; color: white !important; border-radius: 8px !important;
+        height: 50px !important; width: 100% !important; font-weight: bold !important;
+        background-color: #1e3a8a !important; color: white !important;
     }}
-    
-    footer {{visibility: hidden;}}
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. 手勢滑動 (JavaScript) ---
+# --- 3. 手勢滑動 ---
 components.html("""
 <script>
     const tabs = window.parent.document.querySelectorAll('button[data-baseweb="tab"]');
@@ -186,17 +188,15 @@ st.markdown(f'<div class="sys-title">📋 {SYS_TITLE}</div>', unsafe_allow_html=
 tab1, tab2, tab3 = st.tabs(["🖋️ 資料錄入", "📊 歷史紀錄", "🔍 預購追蹤"])
 
 with tab1:
-    if "rk_v29" not in st.session_state: st.session_state.rk_v29 = 0
-    rk = st.session_state.rk_v29
+    if "rk_v30" not in st.session_state: st.session_state.rk_v30 = 0
+    rk = st.session_state.rk_v30
     status_msg = st.empty()
     
-    # 區塊 1
     c1, c2, c3 = st.columns(3)
     d_date = c1.date_input("使用日期", value=datetime.now(tw_tz).date(), key=f"d_{rk}")
     d_dr = c2.text_input("醫師姓名", key=f"dr_{rk}")
     d_content = c3.text_input("使用產品內容(含預購）", key=f"cn_{rk}")
     
-    # 作業區塊 2
     c4, c5, c6 = st.columns(3)
     d_price = c4.selectbox("批價內容", OPT.get("price"), key=f"pr_{rk}")
     d_pre_total, d_pre_today, d_qty, can_submit = 0, 0, 0, True
@@ -220,7 +220,6 @@ with tab1:
     elif d_price == "純預購寄庫":
         d_pre_total = c5.number_input("預購總量", min_value=1, value=5, key=f"pt_{rk}"); d_qty = 0
 
-    # 作業區塊 3 (產品資料)
     c7, c8, c9 = st.columns(3)
     d_prod = c7.selectbox("產品項目", OPT.get("prod"), key=f"pd_{rk}")
     d_spec = c8.text_input("規格", key=f"sp_{rk}")
@@ -239,7 +238,7 @@ with tab1:
     c16, c17, c18 = st.columns(3)
     d_rep = c16.selectbox("跟刀(操作)人員", OPT.get("rep"), key=f"rp_{rk}")
     
-    with c17: d_memo = st.text_area("備註", key=f"me_{rk}", height=48)
+    with c17: d_memo = st.text_area("備註", key=f"me_{rk}")
     with c18:
         if st.button("🚀 提交錄入數據", key="sub_btn", disabled=not can_submit):
             try:
@@ -250,16 +249,14 @@ with tab1:
                 else: remain = 0
                 row = [str(d_date), d_price, d_hosp, d_dept, d_dr, d_prod, d_spec, d_qty, d_pre_total, d_pre_today, remain, d_content, d_pname, d_pid, d_opname, d_loc, d_blood, d_rep, d_memo]
                 ss.worksheet("回應試算表").append_row(row, value_input_option='USER_ENTERED')
-                status_msg.success("✅ 資料已成功存檔！"); time.sleep(1); st.cache_data.clear(); st.session_state.rk_v29 += 1; st.rerun()
+                status_msg.success("✅ 資料已成功存檔！"); time.sleep(1); st.cache_data.clear(); st.session_state.rk_v30 += 1; st.rerun()
             except: status_msg.error("提交異常")
 
 with tab2:
-    st.write("### 📋 最近 50 筆錄入紀錄")
     df_h = fetch_all_data()
     if not df_h.empty: st.dataframe(df_h.iloc[::-1].head(50), use_container_width=True, hide_index=True)
 
 with tab3:
-    st.write("### 🔍 全院 PRP 預購餘量追蹤")
     df_all = fetch_all_data()
     if not df_all.empty:
         summary = df_all.groupby(['病例號/ID', '產品項目']).apply(lambda x: get_current_balance(df_all, x.name[0], x.name[1])).reset_index(name='剩餘總量')
