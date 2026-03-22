@@ -157,6 +157,7 @@ with tab2:
                     # 構建橫向展開的 DataFrame
                     display_df = pd.DataFrame({
                         "選取": [select_all] * len(pending),
+                        "審閱狀態": pending['待審閱'].tolist(),
                         "醫院": pending['醫院'].tolist(),
                         "科別": pending['科別'].tolist(),
                         "醫師姓名": pending['醫師姓名'].tolist(),
