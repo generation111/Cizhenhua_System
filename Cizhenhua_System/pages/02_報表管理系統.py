@@ -8,7 +8,6 @@ import time
 
 # --- 1. 核心設定 ---
 tw_tz = timezone(timedelta(hours=8))
-# 取得系統當前日期，用於日期輸入框預設值
 current_date = datetime.now(tw_tz).date()
 SYS_TITLE = "慈榛驊業務管理系統（全功能終極修復版）"
 
@@ -18,7 +17,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed" 
 )
 
-# --- 2. UI 樣式優化 (框線強化 + 壓縮間距 + 修正行高) ---
+# --- 2. UI 樣式優化 ---
 st.markdown("""
 <style>
     .block-container { padding-top: 2rem !important; max-width: 950px !important; background-color: #F8FAFC !important; }
@@ -39,7 +38,6 @@ st.markdown("""
     .title-c { background: linear-gradient(90deg, #475569, #64748B); }
     .title-n { background: linear-gradient(90deg, #1E293B, #334155); }
     
-    /* 核心輸入框樣式：確保下緣框線 1px 藍色完整顯示 */
     div[data-baseweb="input"], 
     div[data-baseweb="select"], 
     div[data-testid="stDateInput"] > div:first-child {
@@ -56,7 +54,6 @@ st.markdown("""
         line-height: 28px !important;
     }
 
-    /* 訪談錄入框 */
     div[data-baseweb="textarea"] {
         min-height: 42px !important;
         border: 1px solid #1E3A8A !important;
@@ -67,7 +64,6 @@ st.markdown("""
         padding: 8px !important; line-height: 1.2 !important;
     }
 
-    /* 審閱卡片樣式 */
     .report-card {
         background: white; padding: 12px; border-radius: 8px;
         border-left: 5px solid #2B6CB0; margin-bottom: 10px;
@@ -82,7 +78,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. 手勢滑動偵測腳本 ---
+# --- 3. 手勢滑動偵測 ---
 components.html("""
 <script>
     const doc = window.parent.document;
@@ -204,7 +200,6 @@ MARKETING_DB = {
 st.markdown(f'<div class="sys-title">📊 {SYS_TITLE}</div>', unsafe_allow_html=True)
 tab1, tab2, tab3 = st.tabs(["📝 業務錄入", "🔍 審閱管理", "📜 歷史報表"])
 
-# --- Tab 1: 錄入功能 ---
 with tab1:
     if "rk" not in st.session_state: st.session_state.rk = 0
     if "cp" not in st.session_state: st.session_state.cp = None
@@ -216,7 +211,6 @@ with tab1:
 
     st.markdown('<div class="item-l title-c">👤 2. 客戶基本資料</div>', unsafe_allow_html=True)
     r1c1, r1c2, r1c3 = st.columns(3)
-    # 日期設為當前日期
     d_date = r1c1.date_input("日期", value=current_date, key=f"dt_{rk}")
     d_time = r1c2.selectbox("時段", settings["times"], key=f"t_{rk}")
     d_rep = r1c3.selectbox("代表", settings["reps"], index=0, key=f"rep_{rk}")
@@ -226,12 +220,17 @@ with tab1:
     d_dept = r2c2.selectbox("科別", ["請選擇"] + settings["depts"], key=f"d_{rk}")
     d_dr = r2c3.text_input("醫師姓名", key=f"dr_{rk}")
 
+    # --- 關鍵修正：產品按鈕語句組合邏輯 ---
     for i, p in enumerate(MARKETING_DB.keys()):
         if p_cols[i%5].button(p, key=f"btn_{p}_{rk}", use_container_width=True):
             st.session_state.cp = p
-            h_s = d_hosp if d_hosp != "請選擇" else "醫院"
+            # 判斷是否為預設值，若不是則加入語句
+            h_s = d_hosp if d_hosp != "請選擇" else ""
+            dp_s = d_dept if d_dept != "請選擇" else ""
             dr_s = f"{d_dr}醫師" if d_dr else "醫師"
-            st.session_state[f"n_{rk}"] = f"拜訪 {h_s} {dr_s}，進行【{p}】臨床應用說明。"
+            
+            # 組合新語句：{時段} {醫院} {科別} {醫師姓名}，進行【{產品}】介紹。
+            st.session_state[f"n_{rk}"] = f"{d_time} {h_s} {dp_s} {dr_s}，進行【{p}】介紹。"
             st.rerun()
 
     if st.session_state.cp:
@@ -258,7 +257,7 @@ with tab1:
     if b2.button("🧹 清空", use_container_width=True):
         st.session_state.rk += 1; st.session_state.cp = None; st.rerun()
 
-# --- Tab 2: 審閱管理 (功能全恢復) ---
+# --- Tab 2: 審閱管理 ---
 with tab2:
     st.markdown("### 🔍 待審閱清單")
     if ss:
@@ -291,9 +290,9 @@ with tab2:
                             ws.update_cell(i+2, 10, comment)
                             st.rerun()
         else:
-            st.error("試算表格式不正確（缺少審閱狀態列）")
+            st.error("試算表格式不正確")
 
-# --- Tab 3: 歷史報表 (功能全恢復) ---
+# --- Tab 3: 歷史報表 ---
 with tab3:
     st.markdown("### 📜 歷史同步記錄")
     if ss:
