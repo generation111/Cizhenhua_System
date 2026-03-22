@@ -119,7 +119,7 @@ with tab1:
             st.rerun()
 
     st.markdown('<div class="item-l title-n">✍️ 3. 訪談內容錄入</div>', unsafe_allow_html=True)
-    f_note = st.text_area("內容錄入", key=f"n_{rk}", label_visibility="collapsed", height=150)
+    f_note = st.text_area("內容錄入", key=f"n_{rk}", label_visibility="collapsed", height=40)
     
     b1, b2 = st.columns([4, 1])
     if b1.button("🚀 提交同步記錄", type="primary", use_container_width=True):
