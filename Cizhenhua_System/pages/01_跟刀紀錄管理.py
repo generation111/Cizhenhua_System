@@ -8,19 +8,19 @@ import streamlit.components.v1 as components
 
 # --- 1. 核心設定 ---
 tw_tz = timezone(timedelta(hours=8))
-SYS_TITLE = "慈榛驊業務管理系統（清晰大字護眼版）"
+SYS_TITLE = "慈榛驊業務管理系統（完整邊框護眼版）"
 SPREADSHEET_ID = "1w2BDsPHHxgaz6PJhoPLXdh0UQJplA6rr42wLoLQIM9s"
 
 st.set_page_config(page_title=f"{SYS_TITLE}", layout="centered", initial_sidebar_state="collapsed")
 
-# --- 2. 樣式強化 (佰哥調校：大字號 + 統一高度 + 框線 + 護眼綠) ---
+# --- 2. 樣式強化 (佰哥調校：強化框線 + 統一高度 + 護眼綠) ---
 st.markdown(f"""
 <style>
     /* 1. 頁面間距與護眼背景 */
     .block-container {{ 
         padding-top: 3.3rem !important; 
         padding-bottom: 0.2rem !important; 
-        background-color: #F0F9F0 !important; /* 護眼蘋果綠 */
+        background-color: #F0F9F0 !important; 
     }}
     .stApp {{ background-color: #F0F9F0 !important; }}
 
@@ -37,38 +37,34 @@ st.markdown(f"""
         color: #1e293b !important;
     }}
 
-    /* 4. 【核心修正】錄入框統一高度與樣式 */
-    /* 文字框、數字框、日期框 */
-    .stTextInput input, .stNumberInput input, .stDateInput input {{
-        height: 48px !important; /* 統一高度 */
+    /* 4. 【邊框全修復】錄入框高度與完整框線 */
+    /* 鎖定所有 Baseweb 輸入框的容器 */
+    div[data-baseweb="input"], div[data-baseweb="select"], .stDateInput div {{
         border: 1px solid #1e3a8a !important;
         border-radius: 8px !important;
-        padding: 0 10px !important; /* 調整內距確保文字置中 */
-        background-color: white !important;
-        font-size: 1.1rem !important;
-    }}
-    
-    /* 下拉選單 (Selectbox) 的外層與內層高度統一 */
-    .stSelectbox [data-baseweb="select"] {{
-        height: 48px !important; /* 統一高度 */
-        border: 1px solid #1e3a8a !important;
-        border-radius: 8px !important;
-        background-color: white !important;
-        display: flex;
-        align-items: center; /* 內部文字垂直置中 */
-    }}
-    
-    /* 下拉選單內部文字樣式修正 */
-    .stSelectbox [data-baseweb="select"] > div {{
         height: 48px !important;
+        background-color: white !important;
+    }}
+
+    /* 針對內容物進行高度微調與框線隱藏（避免重複框線） */
+    .stTextInput input, .stNumberInput input, .stDateInput input, .stSelectbox [data-baseweb="select"] {{
+        border: none !important; /* 隱藏內層框線 */
+        height: 46px !important; /* 稍微縮小以放入外層容器 */
+        outline: none !important;
+        font-size: 1.1rem !important;
+        background-color: transparent !important;
+    }}
+
+    /* 下拉選單內部文字垂直置中 */
+    .stSelectbox [data-baseweb="select"] > div {{
+        height: 46px !important;
         display: flex;
         align-items: center;
         padding-left: 10px !important;
-        font-size: 1.1rem !important;
     }}
 
-    /* 錄入框點擊時的特效 */
-    .stTextInput input:focus, .stNumberInput input:focus, .stDateInput input:focus, .stSelectbox [data-baseweb="select"]:focus-within {{
+    /* 錄入框點擊時的高亮效果 (Focus) */
+    div[data-baseweb="input"]:focus-within, div[data-baseweb="select"]:focus-within {{
         border: 2px solid #2563eb !important;
         box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2) !important;
     }}
@@ -84,7 +80,7 @@ st.markdown(f"""
         background-color: #1e3a8a !important; color: white !important;
     }}
 
-    /* 6. 按鈕樣式 (微調高度) */
+    /* 6. 按鈕樣式 */
     div.stButton > button {{ 
         height: 50px !important; width: 100% !important; font-weight: bold !important; font-size: 1.2rem !important;
         background-color: #1e3a8a !important; color: white !important; border-radius: 8px !important;
@@ -163,13 +159,13 @@ def get_options():
 
 OPT = get_options()
 
-# --- 5. 介面 (維持佰哥佈局，統一錄入框高度) ---
+# --- 5. 介面 ---
 st.markdown(f'<div class="sys-title">📋 {SYS_TITLE}</div>', unsafe_allow_html=True)
 tab1, tab2, tab3 = st.tabs(["🖋️ 資料錄入", "📊 歷史紀錄", "🔍 預購追蹤"])
 
 with tab1:
-    if "rk_v25" not in st.session_state: st.session_state.rk_v25 = 0
-    rk = st.session_state.rk_v25
+    if "rk_v26" not in st.session_state: st.session_state.rk_v26 = 0
+    rk = st.session_state.rk_v26
     status_msg = st.empty()
     
     # 區塊 1
@@ -235,10 +231,9 @@ with tab1:
                 else: remain = 0
                 row = [str(d_date), d_price, d_hosp, d_dept, d_dr, d_prod, d_spec, d_qty, d_pre_total, d_pre_today, remain, d_content, d_pname, d_pid, d_opname, d_loc, d_blood, d_rep, d_memo]
                 ss.worksheet("回應試算表").append_row(row, value_input_option='USER_ENTERED')
-                status_msg.success("✅ 資料已成功存檔！"); time.sleep(1); st.cache_data.clear(); st.session_state.rk_v25 += 1; st.rerun()
+                status_msg.success("✅ 資料已成功存檔！"); time.sleep(1); st.cache_data.clear(); st.session_state.rk_v26 += 1; st.rerun()
             except: status_msg.error("提交異常")
 
-# tab2 & tab3 維持原樣...
 with tab2:
     st.write("### 📋 最近 50 筆錄入紀錄")
     df_h = fetch_all_data()
