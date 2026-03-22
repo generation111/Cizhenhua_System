@@ -227,28 +227,81 @@ with tab1:
     if b2.button("🧹 清空", use_container_width=True):
         st.session_state.rk += 1; st.session_state.cp = None; st.rerun()
 
-# --- Tab 2: 審閱管理 (功能恢復) ---
+# --- Tab 2: 審閱管理 (精準對應標題 + 欄寬優化) ---
 with tab2:
-    st.markdown("### 🔍 待審閱清單")
+    st.markdown("### 🔍 審閱管理 (批量操作模式)")
+    
     if ss:
         try:
+            # 確保獲取最新資料
             ws = ss.worksheet("表單回應 1")
-            df = pd.DataFrame(ws.get_all_records())
-            if not df.empty and '審閱狀態' in df.columns:
-                pending = df[df['審閱狀態'] == "待審閱"]
-                if pending.empty: st.success("目前無待審閱資料")
+            data = ws.get_all_records()
+            all_df = pd.DataFrame(data)
+            
+            if not all_df.empty and '審閱狀態' in all_df.columns:
+                # 篩選待審閱項目
+                pending = all_df[all_df['審閱狀態'] == '待審閱'].copy()
+                
+                if not pending.empty:
+                    # 全選開關
+                    select_all = st.checkbox("✅ 全選所有項目", key="global_select")
+                    
+                    # 根據您的截圖精準構建 DataFrame (Key 必須與試算表第一行文字完全一致)
+                    display_df = pd.DataFrame({
+                        "選取": [select_all] * len(pending),
+                        "審閱狀態": pending['審閱狀態'].tolist(),
+                        "醫院": pending['醫院'].tolist(),
+                        "科別": pending['科別'].tolist(),
+                        "醫師姓名": pending['醫師姓名'].tolist(),
+                        "推廣產品": pending['推廣產品'].tolist(),  # 對應截圖中的「推廣產品」
+                        "訪談內容錄入": pending['訪談內容錄入'].tolist(),  # 對應截圖中的「訪談內容錄入」
+                        "主管註記": pending['主管註記'].tolist() if '主管註記' in pending.columns else [""] * len(pending)
+                    })
+                    
+                    # 使用 Data Editor 呈現，移除固定 width 讓其自動分配或手動調整
+                    edited_df = st.data_editor(
+                        display_df,
+                        column_config={
+                            "選取": st.column_config.CheckboxColumn("核准", width="small"),
+                            "審閱狀態": st.column_config.TextColumn("狀態", width="small", disabled=True),
+                            "醫院": st.column_config.TextColumn("醫院", disabled=True),
+                            "科別": st.column_config.TextColumn("科別", disabled=True),
+                            "醫師姓名": st.column_config.TextColumn("醫師姓名", disabled=True),
+                            "推廣產品": st.column_config.TextColumn("推廣產品", disabled=True),
+                            "訪談內容錄入": st.column_config.TextColumn("訪談內容錄入", width="large", disabled=True),
+                            "主管註記": st.column_config.TextColumn("主管註記")
+                        },
+                        hide_index=True,
+                        key="editor_tab2",
+                        use_container_width=True
+                    )
+                    
+                    if st.button("🚀 批次提交核准項目", type="primary", use_container_width=True):
+                        selected_rows = edited_df[edited_df["選取"] == True]
+                        
+                        if selected_rows.empty:
+                            st.warning("請勾選要核准的項目。")
+                        else:
+                            with st.spinner(f"正在處理 {len(selected_rows)} 筆資料..."):
+                                for i in selected_rows.index:
+                                    # 取得原始試算表行號
+                                    row_idx = pending.index[i] + 2
+                                    
+                                    # 執行更新：I 欄 (9) 狀態改為「已審閱」，J 欄 (10) 寫入註記
+                                    ws.update_cell(row_idx, 9, "已核准")
+                                    ws.update_cell(row_idx, 10, edited_df.loc[i, "主管註記"])
+                                
+                                st.success(f"✅ 成功完成 {len(selected_rows)} 筆審閱！")
+                                time.sleep(1)
+                                st.cache_data.clear()
+                                st.rerun()
                 else:
-                    for i, row in pending.iterrows():
-                        with st.container():
-                            st.markdown(f'<div class="report-card"><b>📍 {row.get("醫院","")} - {row.get("科別","")} ({row.get("醫師姓名","")})</b><br>⏱️ {row.get("日期","")} {row.get("時段","")} | 👤 代表：{row.get("代表","")}<br>📦 產品：{row.get("推廣產品","")}<br>📝 內容：{row.get("訪談內容錄入","")}</div>', unsafe_allow_html=True)
-                            c1, c2, c3 = st.columns([1, 1, 2])
-                            cmt = c3.text_input("批註", key=f"cmt_{i}")
-                            if c1.button("✅ 核准", key=f"app_{i}", use_container_width=True):
-                                ws.update_cell(i+2, 9, "已核准"); ws.update_cell(i+2, 10, cmt); st.rerun()
-                            if c2.button("❌ 駁回", key=f"rej_{i}", use_container_width=True):
-                                ws.update_cell(i+2, 9, "已駁回"); ws.update_cell(i+2, 10, cmt); st.rerun()
-        except: pass
-
+                    st.success("🎉 目前無待審閱資料。")
+            else:
+                st.info("尚未有任何錄入數據。")
+                
+        except Exception as e:
+            st.error(f"審閱系統執行錯誤: {e}")
 with tab3:
     st.markdown("### 📜 歷史同步記錄")
     if ss:
