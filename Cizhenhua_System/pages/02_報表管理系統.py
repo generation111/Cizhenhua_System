@@ -17,7 +17,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed" 
 )
 
-# --- 2. UI 樣式優化 (框線強化版) ---
+# --- 2. UI 樣式優化 ---
 st.markdown("""
 <style>
     .block-container { padding-top: 2rem !important; max-width: 950px !important; background-color: #F8FAFC !important; }
@@ -38,7 +38,6 @@ st.markdown("""
     .title-c { background: linear-gradient(90deg, #475569, #64748B); }
     .title-n { background: linear-gradient(90deg, #1E293B, #334155); }
     
-    /* 輸入框邊框 1px 藍色實線 */
     div[data-baseweb="input"], 
     div[data-baseweb="select"], 
     div[data-testid="stDateInput"] > div:first-child {
@@ -163,7 +162,7 @@ MARKETING_DB = {
     "Biofermin-R": {
         "full_name": "Biofermin-R 行銷指引 (活性 R 菌)",
         "focus": "🎯 **藥品特性**：抗藥性活性乳酸菌製劑。\n- **臨床效益**：在抗生素環境下維持活性，重建腸道菌相。",
-        "action_table": [{"核心訴求": "耐藥活性", "目標": "重建菌叢", "行銷例菌": "「醫師，Biofermin-R 是唯一能與抗生素共存的菌株。」"}],
+        "action_table": [{"核心訴求": "耐藥活性", "目標": "重建菌叢", "行銷例句": "「醫師，Biofermin-R 是唯一能與抗生素共存的菌株。」"}],
         "dialogue": "「服用抗生素時搭配 R 菌，能保護腸道健康，避免腹瀉。」",
         "manager": "🌟 **主管點評**：抗生素處方的必備搭檔。預防 AAD 第一品牌。"
     },
@@ -221,23 +220,23 @@ with tab1:
     d_dept = r2c2.selectbox("科別", ["請選擇"] + settings["depts"], key=f"d_{rk}")
     d_dr = r2c3.text_input("醫師姓名", key=f"dr_{rk}")
 
-    # --- 核心邏輯：藥品點擊雙模式 (L1 / L2) ---
+    # --- 關鍵修正：藥品點擊雙模式 (L1 / L2) ---
     for i, p in enumerate(MARKETING_DB.keys()):
         if p_cols[i%5].button(p, key=f"btn_{p}_{rk}", use_container_width=True):
             st.session_state.cp = p
             
-            # 模式檢查：是否為「全未選」狀態
+            # 模式檢查：是否為全未選狀態
             is_empty = (d_hosp == "請選擇" and d_dept == "請選擇" and not d_dr)
             
             if is_empty:
-                # 模式2：自動填充預設骨架 (L1模式)
-                final_text = f"拜訪醫院科醫師談\t{p}介紹....臨床應用"
+                # 模式 L1：自動填充預設骨架
+                final_text = f"拜訪醫院科醫師 介紹{p}臨床應用"
             else:
-                # 模式1：智慧帶入選單內容 (L2模式)
+                # 模式 L2：智慧帶入選單內容
                 h_s = d_hosp if d_hosp != "請選擇" else ""
                 dp_s = d_dept if d_dept != "請選擇" else ""
                 dr_s = f"{d_dr}醫師" if d_dr else "醫師"
-                final_text = f"{d_time}拜訪{h_s}{dp_s}{dr_s}談\t{p}介紹....臨床應用"
+                final_text = f"{d_time}拜訪{h_s}{dp_s}{dr_s} 介紹{p}臨床應用"
             
             st.session_state[f"n_{rk}"] = final_text
             st.rerun()
@@ -266,7 +265,7 @@ with tab1:
     if b2.button("🧹 清空", use_container_width=True):
         st.session_state.rk += 1; st.session_state.cp = None; st.rerun()
 
-# --- Tab 2 & 3 保持完整功能 ---
+# --- Tab 2 & 3 審閱與歷史功能 ---
 with tab2:
     st.markdown("### 🔍 待審閱清單")
     if ss:
@@ -274,8 +273,7 @@ with tab2:
         df = pd.DataFrame(ws.get_all_records())
         if '審閱狀態' in df.columns:
             pending = df[df['審閱狀態'] == "待審閱"]
-            if pending.empty: st.success("目前無待審閱資料")
-            else:
+            if not pending.empty:
                 for i, row in pending.iterrows():
                     with st.container():
                         st.markdown(f'<div class="report-card"><b>📍 {row["醫院"]}-{row["科別"]}({row["醫師姓名"]})</b><br>📦 {row["產品"]}<br>📝 {row["訪談內容概要"]}</div>', unsafe_allow_html=True)
