@@ -17,7 +17,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed" 
 )
 
-# --- 2. UI 樣式優化 (Padding 3.2rem & 審閱卡片強化) ---
+# --- 2. UI 樣式優化 (加入表格框線強化) ---
 st.markdown("""
 <style>
     .block-container { padding-top: 3.2rem !important; max-width: 950px !important; background-color: #F8FAFC !important; }
@@ -35,17 +35,14 @@ st.markdown("""
     .title-p { background: linear-gradient(90deg, #64748B, #94A3B8); }
     .title-c { background: linear-gradient(90deg, #475569, #64748B); }
     .title-n { background: linear-gradient(90deg, #1E293B, #334155); }
-    
-    /* 審閱卡片專用樣式 */
-    .report-card {
-        background: white; padding: 18px; border-radius: 12px;
-        border-left: 6px solid #1E3A8A; margin-bottom: 15px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        color: #1A202C !important;
+
+    /* 強制顯示表格框線 (Data Editor 樣式強化) */
+    [data-testid="stDataEditor"] div {
+        border-color: #CBD5E0 !important;
     }
-    .card-label { color: #4A5568; font-size: 0.85rem; font-weight: bold; margin-bottom: 2px; }
-    .card-value { color: #2D3748; font-size: 1.05rem; margin-bottom: 8px; border-bottom: 1.5px solid #EDF2F7; padding-bottom: 4px; }
-    .card-content { background: #F7FAFC; padding: 10px; border-radius: 6px; font-size: 1rem; line-height: 1.5; color: #2D3748; border: 1px dashed #CBD5E0; }
+    .stDataFrame td, .stDataFrame th {
+        border: 1px solid #CBD5E0 !important;
+    }
 
     footer { visibility: hidden; }
 </style>
@@ -83,22 +80,19 @@ settings = get_settings()
 st.markdown(f'<div class="sys-title">📊 {SYS_TITLE}</div>', unsafe_allow_html=True)
 tab1, tab2, tab3 = st.tabs(["📝 業務錄入", "🔍 審閱管理", "📜 歷史報表"])
 
-# --- Tab 1: 錄入 ---
+# --- Tab 1: 錄入 (略過，維持原樣) ---
 with tab1:
     if "rk" not in st.session_state: st.session_state.rk = 0
     if "cp" not in st.session_state: st.session_state.cp = None
     rk = st.session_state.rk
-    
     st.markdown('<div class="item-l title-p">🚀 1. 產品快速選取</div>', unsafe_allow_html=True)
     p_list = ["Mocolax", "Kocel", "Calmsit", "Topcef", "速必一", "Biofermin-R", "Nolidin", "Sportvis", "上療漾", "喉立順"]
     p_cols = st.columns(5)
-    
     st.markdown('<div class="item-l title-c">👤 2. 客戶基本資料</div>', unsafe_allow_html=True)
     r1c1, r1c2, r1c3 = st.columns(3)
     d_date = r1c1.date_input("日期", value=current_date, key=f"dt_{rk}")
     d_time = r1c2.selectbox("時段", settings["times"], key=f"t_{rk}")
     d_rep = r1c3.selectbox("代表", settings["reps"], index=0, key=f"rep_{rk}")
-    
     r2c1, r2c2, r2c3 = st.columns(3)
     d_hosp = r2c1.selectbox("醫院", ["請選擇"] + settings["hosps"], key=f"h_{rk}")
     d_dept = r2c2.selectbox("科別", ["請選擇"] + settings["depts"], key=f"d_{rk}")
@@ -108,19 +102,14 @@ with tab1:
         if p_cols[i%5].button(p, key=f"btn_{p}_{rk}", use_container_width=True):
             st.session_state.cp = p
             is_empty = (d_hosp == "請選擇" and d_dept == "請選擇" and not d_dr)
-            if is_empty:
-                final_text = f"拜訪醫院科醫師 介紹{p}臨床應用"
-            else:
-                h_s = d_hosp if d_hosp != "請選擇" else ""
-                dp_s = d_dept if d_dept != "請選擇" else ""
-                dr_s = f"{d_dr}醫師" if d_dr else "醫師"
-                final_text = f"{d_time}拜訪{h_s}{dp_s}{dr_s} 介紹{p}臨床應用"
-            st.session_state[f"n_{rk}"] = final_text
+            h_s = d_hosp if d_hosp != "請選擇" else ""
+            dp_s = d_dept if d_dept != "請選擇" else ""
+            dr_s = f"{d_dr}醫師" if d_dr else "醫師"
+            st.session_state[f"n_{rk}"] = f"拜訪醫院科醫師 介紹{p}臨床應用" if is_empty else f"{d_time}拜訪{h_s}{dp_s}{dr_s} 介紹{p}臨床應用"
             st.rerun()
 
     st.markdown('<div class="item-l title-n">✍️ 3. 訪談內容錄入</div>', unsafe_allow_html=True)
     f_note = st.text_area("內容錄入", key=f"n_{rk}", label_visibility="collapsed", height=40)
-    
     b1, b2 = st.columns([4, 1])
     if b1.button("🚀 提交同步記錄", type="primary", use_container_width=True):
         if not f_note: st.warning("內容不可為空")
@@ -129,55 +118,44 @@ with tab1:
                 ws = ss.worksheet("表單回應 1")
                 row = [datetime.now(tw_tz).strftime("%Y-%m-%d %H:%M:%S"), str(d_date), d_time, d_rep, d_hosp, d_dept, d_dr, st.session_state.cp, "待審閱", "", f_note]
                 ws.append_row(row, value_input_option='USER_ENTERED')
-                st.toast("✅ 提交完成"); time.sleep(0.5)
-                st.session_state.rk += 1; st.session_state.cp = None; st.rerun()
+                st.toast("✅ 提交完成"); time.sleep(0.5); st.session_state.rk += 1; st.session_state.cp = None; st.rerun()
             except Exception as e: st.error(f"提交失敗: {e}")
+    if b2.button("🧹 清空", use_container_width=True): st.session_state.rk += 1; st.session_state.cp = None; st.rerun()
 
-    if b2.button("🧹 清空", use_container_width=True):
-        st.session_state.rk += 1; st.session_state.cp = None; st.rerun()
-
-# --- Tab 2: 審閱管理 (精準對應標題 + 欄寬優化) ---
+# --- Tab 2: 審閱管理 (恢復框線 + 依文字調整寬度) ---
 with tab2:
     st.markdown("### 🔍 審閱管理 (批量操作模式)")
-    
     if ss:
         try:
-            # 確保獲取最新資料
             ws = ss.worksheet("表單回應 1")
             data = ws.get_all_records()
             all_df = pd.DataFrame(data)
-            
             if not all_df.empty and '審閱狀態' in all_df.columns:
-                # 篩選待審閱項目
                 pending = all_df[all_df['審閱狀態'] == '待審閱'].copy()
-                
                 if not pending.empty:
-                    # 全選開關
                     select_all = st.checkbox("✅ 全選所有項目", key="global_select")
-                    
-                    # 根據您的截圖精準構建 DataFrame (Key 必須與試算表第一行文字完全一致)
                     display_df = pd.DataFrame({
                         "選取": [select_all] * len(pending),
                         "審閱狀態": pending['審閱狀態'].tolist(),
                         "醫院": pending['醫院'].tolist(),
                         "科別": pending['科別'].tolist(),
                         "醫師姓名": pending['醫師姓名'].tolist(),
-                        "推廣產品": pending['推廣產品'].tolist(),  # 對應截圖中的「推廣產品」
-                        "訪談內容錄入": pending['訪談內容錄入'].tolist(),  # 對應截圖中的「訪談內容錄入」
+                        "推廣產品": pending['推廣產品'].tolist(),
+                        "訪談內容錄入": pending['訪談內容錄入'].tolist(),
                         "主管註記": pending['主管註記'].tolist() if '主管註記' in pending.columns else [""] * len(pending)
                     })
                     
-                    # 使用 Data Editor 呈現，移除固定 width 讓其自動分配或手動調整
+                    # 移除大部分 width 設定，使其自動根據文字長度調整
                     edited_df = st.data_editor(
                         display_df,
                         column_config={
-                            "選取": st.column_config.CheckboxColumn("核准", width="small"),
-                            "審閱狀態": st.column_config.TextColumn("狀態", width="small", disabled=True),
+                            "選取": st.column_config.CheckboxColumn("核准", width=60),
+                            "審閱狀態": st.column_config.TextColumn("狀態", disabled=True),
                             "醫院": st.column_config.TextColumn("醫院", disabled=True),
                             "科別": st.column_config.TextColumn("科別", disabled=True),
                             "醫師姓名": st.column_config.TextColumn("醫師姓名", disabled=True),
                             "推廣產品": st.column_config.TextColumn("推廣產品", disabled=True),
-                            "訪談內容錄入": st.column_config.TextColumn("訪談內容錄入", width="large", disabled=True),
+                            "訪談內容錄入": st.column_config.TextColumn("訪談內容錄入", disabled=True),
                             "主管註記": st.column_config.TextColumn("主管註記")
                         },
                         hide_index=True,
@@ -187,31 +165,15 @@ with tab2:
                     
                     if st.button("🚀 批次提交核准項目", type="primary", use_container_width=True):
                         selected_rows = edited_df[edited_df["選取"] == True]
-                        
-                        if selected_rows.empty:
-                            st.warning("請勾選要核准的項目。")
-                        else:
+                        if not selected_rows.empty:
                             with st.spinner(f"正在處理 {len(selected_rows)} 筆資料..."):
                                 for i in selected_rows.index:
-                                    # 取得原始試算表行號
                                     row_idx = pending.index[i] + 2
-                                    
-                                    # 執行更新：I 欄 (9) 狀態改為「已審閱」，J 欄 (10) 寫入註記
                                     ws.update_cell(row_idx, 9, "已核准")
                                     ws.update_cell(row_idx, 10, edited_df.loc[i, "主管註記"])
-                                
-                                st.success(f"✅ 成功完成 {len(selected_rows)} 筆審閱！")
-                                time.sleep(1)
-                                st.cache_data.clear()
-                                st.rerun()
-                else:
-                    st.success("🎉 目前無待審閱資料。")
-            else:
-                st.info("尚未有任何錄入數據。")
-                
-        except Exception as e:
-            st.error(f"審閱系統執行錯誤: {e}")
-
+                                st.success("✅ 完成審閱！"); time.sleep(1); st.cache_data.clear(); st.rerun()
+                else: st.success("🎉 目前無待審閱資料。")
+        except Exception as e: st.error(f"錯誤: {e}")
 
 # --- Tab 3: 歷史報表 ---
 with tab3:
@@ -222,6 +184,4 @@ with tab3:
             all_data = pd.DataFrame(ws.get_all_records())
             if not all_data.empty:
                 st.dataframe(all_data.sort_values(by="時間戳記", ascending=False), use_container_width=True)
-            else:
-                st.info("目前無任何歷史記錄。")
         except: st.error("報表讀取失敗")
