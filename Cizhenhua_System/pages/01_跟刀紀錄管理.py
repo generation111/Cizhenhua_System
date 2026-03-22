@@ -13,7 +13,7 @@ SPREADSHEET_ID = "1w2BDsPHHxgaz6PJhoPLXdh0UQJplA6rr42wLoLQIM9s"
 
 st.set_page_config(page_title=f"{SYS_TITLE}", layout="centered", initial_sidebar_state="collapsed")
 
-# --- 2. 樣式精修 (修復備註標籤、數量框線、統一高度) ---
+# --- 2. 樣式精修 (數量框線修復 + 備註高度減半) ---
 st.markdown(f"""
 <style>
     /* 1. 頁面基礎與護眼背景 */
@@ -30,7 +30,7 @@ st.markdown(f"""
         margin-top: -15px !important; margin-bottom: 20px !important; 
     }}
     
-    /* 3. 標籤文字 (Labels) - 確保清晰且無框線 */
+    /* 3. 標籤文字 (Labels) */
     [data-testid="stWidgetLabel"] p {{
         font-size: 1.1rem !important;
         font-weight: 700 !important;
@@ -39,39 +39,47 @@ st.markdown(f"""
         margin-bottom: 5px !important;
     }}
 
-    /* 4. 【框線全修復】錄入框、數量框、備註框 統一高度與框線 */
-    /* 涵蓋 TextInput, NumberInput, DateInput, Selectbox, TextArea */
-    .stTextInput div[data-baseweb="input"], 
-    .stNumberInput div[data-baseweb="input"], 
-    .stDateInput div[data-baseweb="input"],
-    .stSelectbox div[data-baseweb="select"],
-    .stTextArea div[data-baseweb="textarea"] {{
+    /* 4. 【框線與高度核心修復】 */
+    /* 統一所有錄入框容器邊框 (TextInput, NumberInput, DateInput, Selectbox, TextArea) */
+    div[data-baseweb="input"], 
+    div[data-baseweb="select"],
+    div[data-baseweb="textarea"] {{
         border: 1px solid #1e3a8a !important;
         border-radius: 8px !important;
-        min-height: 48px !important;
+        height: 48px !important; /* 全部強制統一 48px */
         background-color: white !important;
+        overflow: hidden !important;
     }}
 
-    /* 特別針對備註 (TextArea) 的高度與內距 */
+    /* 針對數量框 (NumberInput) 的特殊處理：確保內部微調按鈕不遮擋框線 */
+    .stNumberInput div[data-baseweb="input"] {{
+        display: flex !important;
+        align-items: center !important;
+    }}
+
+    /* 針對備註 (TextArea) 高度減半 */
+    .stTextArea div[data-baseweb="textarea"] {{
+        height: 48px !important; /* 高度減半，與錄入框一致 */
+    }}
     .stTextArea textarea {{
-        height: 48px !important; /* 初期與錄入框同高 */
-        font-size: 1.1rem !important;
-        background-color: transparent !important;
-        border: none !important;
-        outline: none !important;
+        height: 48px !important;
+        min-height: 48px !important;
         padding: 8px 10px !important;
+        font-size: 1.1rem !important;
+        border: none !important;
+        background-color: transparent !important;
     }}
 
-    /* 移除日期元件多餘的重複包圍 */
+    /* 移除日期元件多餘邊框 */
     .stDateInput > div {{ border: none !important; }}
 
-    /* 輸入文字樣式與垂直置中 (文字、數字、日期) */
+    /* 內部輸入文字對齊 */
     .stTextInput input, .stNumberInput input, .stDateInput input {{
         height: 46px !important;
         font-size: 1.1rem !important;
-        background-color: transparent !important;
         border: none !important;
         outline: none !important;
+        background-color: transparent !important;
     }}
 
     /* 下拉選單文字對齊 */
@@ -80,14 +88,12 @@ st.markdown(f"""
         display: flex;
         align-items: center;
         padding-left: 10px !important;
-        font-size: 1.1rem !important;
     }}
 
-    /* 5. 移除所有分隔線 */
+    /* 5. 移除分隔線 */
     hr {{ display: none !important; }}
 
     /* 6. 分頁標籤 (Tabs) */
-    .stTabs [data-baseweb="tab-list"] {{ gap: 8px; background-color: rgba(255,255,255,0.5); padding: 5px; }}
     .stTabs [data-baseweb="tab"] {{
         height: 48px; background-color: white; border-radius: 8px; 
         color: #64748b; font-weight: 700; border: 1px solid #e2e8f0;
@@ -97,18 +103,17 @@ st.markdown(f"""
         background-color: #1e3a8a !important; color: white !important;
     }}
 
-    /* 7. 按鈕樣式 (提交按鈕) */
+    /* 7. 提交按鈕 */
     div.stButton > button {{ 
         height: 50px !important; width: 100% !important; font-weight: bold !important; font-size: 1.2rem !important;
         background-color: #1e3a8a !important; color: white !important; border-radius: 8px !important;
-        margin-top: 15px;
     }}
     
     footer {{visibility: hidden;}}
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. 加入手勢滑動偵測 ---
+# --- 3. 手勢滑動 (JavaScript) ---
 components.html("""
 <script>
     const tabs = window.parent.document.querySelectorAll('button[data-baseweb="tab"]');
@@ -123,7 +128,7 @@ components.html("""
 </script>
 """, height=0)
 
-# --- 4. 數據核心 ---
+# --- 4. 數據核心 (略，維持不變) ---
 @st.cache_resource(ttl=60)
 def get_ss():
     try:
@@ -181,8 +186,8 @@ st.markdown(f'<div class="sys-title">📋 {SYS_TITLE}</div>', unsafe_allow_html=
 tab1, tab2, tab3 = st.tabs(["🖋️ 資料錄入", "📊 歷史紀錄", "🔍 預購追蹤"])
 
 with tab1:
-    if "rk_v28" not in st.session_state: st.session_state.rk_v28 = 0
-    rk = st.session_state.rk_v28
+    if "rk_v29" not in st.session_state: st.session_state.rk_v29 = 0
+    rk = st.session_state.rk_v29
     status_msg = st.empty()
     
     # 區塊 1
@@ -234,7 +239,7 @@ with tab1:
     c16, c17, c18 = st.columns(3)
     d_rep = c16.selectbox("跟刀(操作)人員", OPT.get("rep"), key=f"rp_{rk}")
     
-    with c17: d_memo = st.text_area("備註", key=f"me_{rk}", height=48) # 恢復 Label，高度統一
+    with c17: d_memo = st.text_area("備註", key=f"me_{rk}", height=48)
     with c18:
         if st.button("🚀 提交錄入數據", key="sub_btn", disabled=not can_submit):
             try:
@@ -245,7 +250,7 @@ with tab1:
                 else: remain = 0
                 row = [str(d_date), d_price, d_hosp, d_dept, d_dr, d_prod, d_spec, d_qty, d_pre_total, d_pre_today, remain, d_content, d_pname, d_pid, d_opname, d_loc, d_blood, d_rep, d_memo]
                 ss.worksheet("回應試算表").append_row(row, value_input_option='USER_ENTERED')
-                status_msg.success("✅ 資料已成功存檔！"); time.sleep(1); st.cache_data.clear(); st.session_state.rk_v28 += 1; st.rerun()
+                status_msg.success("✅ 資料已成功存檔！"); time.sleep(1); st.cache_data.clear(); st.session_state.rk_v29 += 1; st.rerun()
             except: status_msg.error("提交異常")
 
 with tab2:
