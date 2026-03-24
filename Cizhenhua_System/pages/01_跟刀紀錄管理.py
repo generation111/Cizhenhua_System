@@ -20,7 +20,7 @@ st.markdown(f"""
     
     /* 修正 Padding-top 避免標題切割，並保持綠色基底 */
     .block-container {{ 
-        padding-top: 5rem !important; 
+        padding-top: 2.8rem !important; 
         max-width: 900px !important;
         background-color: #F0F9F0 !important; 
     }}
