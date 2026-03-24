@@ -15,10 +15,7 @@ st.set_page_config(page_title=SYS_TITLE, layout="centered", initial_sidebar_stat
 # --- 2. 樣式精修 (解決標題切割問題) ---
 st.markdown(f"""
 <style>
-    /* 強制移除預設 Header 區塊空白 */
-    header {{ visibility: hidden; height: 0px !important; }}
-    
-    /* 修正 Padding-top 避免標題切割，並保持綠色基底 */
+      /* 修正 Padding-top 避免標題切割，並保持綠色基底 */
     .block-container {{ 
         padding-top: 2.8rem !important; 
         max-width: 900px !important;
