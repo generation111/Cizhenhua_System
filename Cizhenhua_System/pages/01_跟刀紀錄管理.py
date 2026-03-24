@@ -1,5 +1,5 @@
 import streamlit as st
-import pd as pd
+import pandas as pd  # <-- 這裡修正：從 pd 改回 pandas
 import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime, timedelta, timezone
