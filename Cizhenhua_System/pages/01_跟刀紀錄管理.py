@@ -12,87 +12,58 @@ SPREADSHEET_ID = "1w2BDsPHHxgaz6PJhoPLXdh0UQJplA6rr42wLoLQIM9s"
 
 st.set_page_config(page_title=SYS_TITLE, layout="centered", initial_sidebar_state="collapsed")
 
-# --- 2. 樣式精修 (徹底解決對齊與框線問題) ---
+# --- 2. 樣式精修 (徹底解決對齊、缺框與重複邊框) ---
 st.markdown(f"""
 <style>
-    /* 1. 頂部狀態列微調，保留功能不遮擋 */
-    [data-testid="stHeader"] {{
-        background: rgba(0,0,0,0) !important;
-        height: 0px !important;
-    }}
-    
+    [data-testid="stHeader"] {{ visibility: hidden; height: 0px !important; }}
     .block-container {{ 
         padding-top: 3.5rem !important; 
         max-width: 850px !important;
         background-color: #F0F9F0 !important; 
     }}
     .stApp {{ background-color: #F0F9F0 !important; }}
-    
     .sys-title {{ 
-        text-align: center; font-size: 32px !important; font-weight: 900; color: #1e3a8a; 
+        text-align: center; font-size: 30px !important; font-weight: 900; color: #1e3a8a; 
         margin-top: -15px !important; margin-bottom: 20px !important; 
     }}
     
-    /* 2. 標籤與字體設定 */
+    /* 標籤字體微調 */
     [data-testid="stWidgetLabel"] p {{ 
-        font-size: 0.95rem !important; 
-        font-weight: 700 !important; 
-        color: #1e293b !important; 
+        font-size: 0.95rem !important; font-weight: 700 !important; color: #1e293b !important; 
         margin-bottom: 2px !important; 
     }}
 
-    /* 3. 核心修正：針對所有輸入框的外殼進行統一 */
-    /* 我們不再設定 div 的高度，而是設定內層容器的高度，避免框線重疊 */
-    
-    /* 針對 text_input, selectbox, date_input 的統一外觀 */
+    /* 統一 38px 高度與單一邊框控制 */
+    /* 針對所有輸入框的外框容器進行重置 */
     div[data-baseweb="input"], 
-    div[data-baseweb="select"] > div, 
-    div[data-baseweb="base-input"] {{
-        height: 38px !important;
-        background-color: white !important;
-        border: 1px solid #1e3a8a !important; /* 統一單一邊框線 */
-        border-radius: 6px !important;
-    }}
-
-    /* 移除 Streamlit 預設的焦點藍色外框，避免視覺重複 */
-    div[data-baseweb="input"]:focus-within, 
-    div[data-baseweb="select"] > div:focus-within {{
-        border-color: #3b82f6 !important;
-        box-shadow: none !important;
-    }}
-
-    /* 4. 備註欄 (TextArea) 特化對齊 */
+    div[data-baseweb="select"] > div,
+    div[data-baseweb="base-input"],
     .stTextArea textarea {{
         height: 38px !important;
         min-height: 38px !important;
-        line-height: 1.2 !important;
-        padding: 8px !important;
-        border: none !important; /* 內部不重複線 */
-    }}
-    
-    /* 確保輸入文字垂直居中 */
-    input {{
-        padding-top: 0px !important;
-        padding-bottom: 0px !important;
+        background-color: white !important;
+        border: 1.5px solid #1e3a8a !important; 
+        border-radius: 6px !important;
+        box-shadow: none !important;
     }}
 
-    /* 5. Tabs 標籤頁美化 */
-    .stTabs [data-baseweb="tab"] {{ 
-        height: 48px !important; 
-        font-weight: 800 !important; 
-    }}
-    .stTabs [aria-selected="true"] {{ 
-        background-color: #1e3a8a !important; 
-        color: white !important; 
-        border-radius: 5px 5px 0 0;
-    }}
+    /* 移除 Selectbox 內部的重複邊框 */
+    div[data-baseweb="select"] > div {{ border: 1.5px solid #1e3a8a !important; }}
+    
+    /* 確保文字垂直居中 */
+    input {{ height: 36px !important; line-height: 36px !important; padding: 0 10px !important; }}
+    .stTextArea textarea {{ padding: 8px !important; border: 1.5px solid #1e3a8a !important; }}
+
+    /* Tabs 標籤頁 */
+    .stTabs [data-baseweb="tab"] {{ height: 48px !important; font-weight: 800 !important; }}
+    .stTabs [aria-selected="true"] {{ background-color: #1e3a8a !important; color: white !important; }}
     
     footer {{visibility: hidden;}}
 </style>
 <div class="sys-title">📋 {SYS_TITLE}</div>
 """, unsafe_allow_html=True)
 
-# --- 3. 數據核心 (保持不變) ---
+# --- 3. 數據核心 ---
 @st.cache_resource(ttl=60)
 def get_ss():
     try:
@@ -135,29 +106,28 @@ def get_options():
 
 OPT = get_options()
 
-# --- 4. 介面佈局 (保持邏輯一致) ---
+# --- 4. 介面佈局 ---
 tab1, tab2, tab3 = st.tabs(["🖋️ 資料錄入", "📊 歷史紀錄", "🔍 預購追蹤"])
 
 with tab1:
-    if "rk_ui_fix" not in st.session_state: st.session_state.rk_ui_fix = 0
-    rk = st.session_state.rk_ui_fix
+    if "rk_auto_dt" not in st.session_state: st.session_state.rk_auto_dt = 0
+    rk = st.session_state.rk_auto_dt
     db_df = fetch_all_data()
 
-    # 第一行
-    c1, c2, c3 = st.columns(3)
-    d_date = c1.date_input("使用日期", value=datetime.now(tw_tz).date(), key=f"dt_{rk}")
-    d_price = c2.selectbox("批價內容", OPT.get("price"), key=f"pr_{rk}")
-    d_hosp = c3.selectbox("使用醫院", OPT.get("hosp"), key=f"hs_{rk}")
+    # 第一行 (日期已改為後台預設，畫面上移除 c1)
+    c1, c2 = st.columns(2)
+    d_price = c1.selectbox("批價內容", OPT.get("price"), key=f"pr_{rk}")
+    d_hosp = c2.selectbox("使用醫院", OPT.get("hosp"), key=f"hs_{rk}")
     
     # 第二行
-    c4, c5, c6 = st.columns(3)
-    d_dept = c4.selectbox("使用科別", OPT.get("dept"), key=f"dp_{rk}")
-    d_dr = c5.text_input("醫師姓名", key=f"dr_{rk}")
-    d_prod = c6.selectbox("產品項目", OPT.get("prod"), key=f"pd_{rk}")
+    c3, c4, c5 = st.columns(3)
+    d_dept = c3.selectbox("使用科別", OPT.get("dept"), key=f"dp_{rk}")
+    d_dr = c4.text_input("醫師姓名", key=f"dr_{rk}")
+    d_prod = c5.selectbox("產品項目", OPT.get("prod"), key=f"pd_{rk}")
 
     # 第三行
-    c7, c8, c9 = st.columns(3)
-    d_spec = c7.text_input("規格", key=f"sp_{rk}")
+    c6, c7, c8 = st.columns(3)
+    d_spec = c6.text_input("規格", key=f"sp_{rk}")
     d_qty, d_pre_total, d_pre_today, can_sub = 0, 0, 0, True
     
     if d_price == "使用前次預購":
@@ -166,48 +136,50 @@ with tab1:
         u_df = db_df[(db_df['病例號/ID'].astype(str).str.strip() == p_id) & (db_df['產品項目'] == p_item)]
         bal = int(u_df.iloc[-1]['預購餘量']) if not u_df.empty else 0
         if bal > 0:
-            c8.success(f"餘量：{bal}")
-            d_pre_today = c9.number_input("扣除量", min_value=1, max_value=bal, value=1, key=f"py_{rk}"); d_qty = d_pre_today
+            c7.success(f"餘量：{bal}")
+            d_pre_today = c8.number_input("扣除量", min_value=1, max_value=bal, value=1, key=f"py_{rk}"); d_qty = d_pre_today
         else:
-            c8.warning("無餘額"); can_sub = False
+            c7.warning("無餘額"); can_sub = False
     elif d_price == "批價 + 預購":
-        d_pre_total = c8.number_input("預購總量", min_value=1, value=5, key=f"pt_{rk}")
-        d_pre_today = c9.number_input("當日批價量", min_value=1, value=1, key=f"py_{rk}"); d_qty = d_pre_today
+        d_pre_total = c7.number_input("預購總量", min_value=1, value=5, key=f"pt_{rk}")
+        d_pre_today = c8.number_input("當日批價量", min_value=1, value=1, key=f"py_{rk}"); d_qty = d_pre_today
     else:
-        d_qty = c8.number_input("數量", min_value=1, value=1, key=f"qt_{rk}"); d_pre_today = d_qty
+        d_qty = c7.number_input("數量", min_value=1, value=1, key=f"qt_{rk}"); d_pre_today = d_qty
 
     # 第四行
-    c10, c11, c12 = st.columns(3)
-    d_content = c10.text_input("產品內容(含預購)", key=f"cn_{rk}")
-    d_pname = c11.text_input("病人名", key=f"pn_{rk}")
-    d_pid = c12.text_input("病例號/ID", key=f"pi_{rk}")
+    c9, c10, c11 = st.columns(3)
+    d_content = c9.text_input("產品內容(含預購)", key=f"cn_{rk}")
+    d_pname = c10.text_input("病人名", key=f"pn_{rk}")
+    d_pid = c11.text_input("病例號/ID", key=f"pi_{rk}")
 
     # 第五行
-    c13, c14, c15 = st.columns(3)
-    d_op = c13.text_input("手術名稱/使用部位", key=f"op_{rk}")
-    d_loc = c14.selectbox("使用地點", OPT.get("loc"), key=f"lc_{rk}")
-    d_blood = c15.selectbox("抽血人員", OPT.get("blood"), key=f"bl_{rk}")
+    c12, c13, c14 = st.columns(3)
+    d_op = c12.text_input("手術名稱/部位", key=f"op_{rk}")
+    d_loc = c13.selectbox("使用地點", OPT.get("loc"), key=f"lc_{rk}")
+    d_blood = c14.selectbox("抽血人員", OPT.get("blood"), key=f"bl_{rk}")
 
-    # 第六行
-    c16, c17, c18 = st.columns(3)
-    d_rep = c16.selectbox("跟刀(操作)人員", OPT.get("rep"), key=f"rp_{rk}")
-    d_memo = c17.text_area("備註", key=f"me_{rk}")
+    # 第六行 (完美對齊區)
+    c15, c16, c17 = st.columns(3)
+    d_rep = c15.selectbox("跟刀人員", OPT.get("rep"), key=f"rp_{rk}")
+    d_memo = c16.text_area("備註", key=f"me_{rk}")
     
-    with c18:
-        st.write("") # 對齊按鈕
+    with c17:
+        st.write("") # 垂直推移對齊按鈕
         if st.button("🚀 提交數據", use_container_width=True, disabled=not (can_sub and d_pid)):
+            now_dt = datetime.now(tw_tz).strftime("%Y-%m-%d %H:%M:%S")
             temp_df = fetch_all_data()
             prev_res = temp_df[(temp_df['病例號/ID'].astype(str).str.strip() == d_pid.strip()) & (temp_df['產品項目'] == d_prod)]
             curr_bal = int(prev_res.iloc[-1]['預購餘量']) if not prev_res.empty else 0
+            
             if d_price == "使用前次預購": final_bal = curr_bal - d_pre_today
             elif d_price in ["批價 + 預購", "純預購寄庫"]: final_bal = curr_bal + (d_pre_total - d_pre_today)
             else: final_bal = 0
             
-            row = [str(d_date), d_price, d_hosp, d_dept, d_dr, d_prod, d_spec, d_qty, d_pre_total, d_pre_today, final_bal, d_content, d_pname, d_pid, d_op, d_loc, d_blood, d_rep, d_memo]
+            row = [now_dt, d_price, d_hosp, d_dept, d_dr, d_prod, d_spec, d_qty, d_pre_total, d_pre_today, final_bal, d_content, d_pname, d_pid, d_op, d_loc, d_blood, d_rep, d_memo]
             ss.worksheet("回應試算表").append_row(row, value_input_option='USER_ENTERED')
-            st.toast("✅ 已成功存檔！")
+            st.toast("✅ 存檔成功！")
             st.cache_data.clear()
-            time.sleep(1); st.session_state.rk_ui_fix += 1; st.rerun()
+            time.sleep(1); st.session_state.rk_auto_dt += 1; st.rerun()
 
 with tab2:
     st.dataframe(fetch_all_data().iloc[::-1].head(50), use_container_width=True, hide_index=True)
