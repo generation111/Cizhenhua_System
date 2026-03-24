@@ -12,51 +12,77 @@ SPREADSHEET_ID = "1w2BDsPHHxgaz6PJhoPLXdh0UQJplA6rr42wLoLQIM9s"
 
 st.set_page_config(page_title=SYS_TITLE, layout="centered", initial_sidebar_state="collapsed")
 
-# --- 2. 樣式精修 (徹底解決對齊、缺框與重複邊框) ---
+# --- 2. 樣式精修 (高度 43px，解決框線重疊與凌亂) ---
 st.markdown(f"""
 <style>
+    /* 頂部狀態列隱藏 */
     [data-testid="stHeader"] {{ visibility: hidden; height: 0px !important; }}
+    
     .block-container {{ 
         padding-top: 3.5rem !important; 
         max-width: 850px !important;
         background-color: #F0F9F0 !important; 
     }}
     .stApp {{ background-color: #F0F9F0 !important; }}
+    
     .sys-title {{ 
         text-align: center; font-size: 30px !important; font-weight: 900; color: #1e3a8a; 
         margin-top: -15px !important; margin-bottom: 20px !important; 
     }}
     
-    /* 標籤字體微調 */
+    /* 標籤文字樣式 */
     [data-testid="stWidgetLabel"] p {{ 
-        font-size: 0.95rem !important; font-weight: 700 !important; color: #1e293b !important; 
-        margin-bottom: 2px !important; 
+        font-size: 1rem !important; font-weight: 700 !important; color: #1e293b !important; 
+        margin-bottom: 4px !important; 
     }}
 
-    /* 統一 38px 高度與單一邊框控制 */
-    /* 針對所有輸入框的外框容器進行重置 */
+    /* --- 核心：統一 43px 高度與單一邊框控制 --- */
+    /* 針對所有輸入框、下拉選單的外殼進行強制重置 */
     div[data-baseweb="input"], 
     div[data-baseweb="select"] > div,
-    div[data-baseweb="base-input"],
-    .stTextArea textarea {{
-        height: 38px !important;
-        min-height: 38px !important;
+    div[data-baseweb="base-input"] {{
+        height: 43px !important;
+        min-height: 43px !important;
         background-color: white !important;
-        border: 1.5px solid #1e3a8a !important; 
-        border-radius: 6px !important;
+        border: 2px solid #1e3a8a !important; /* 加粗邊框，增加質感 */
+        border-radius: 8px !important;
         box-shadow: none !important;
     }}
 
-    /* 移除 Selectbox 內部的重複邊框 */
-    div[data-baseweb="select"] > div {{ border: 1.5px solid #1e3a8a !important; }}
+    /* 解決 Selectbox (下拉選單) 內部的重疊框線 */
+    div[data-baseweb="select"] > div {{
+        border: 2px solid #1e3a8a !important;
+    }}
     
-    /* 確保文字垂直居中 */
-    input {{ height: 36px !important; line-height: 36px !important; padding: 0 10px !important; }}
-    .stTextArea textarea {{ padding: 8px !important; border: 1.5px solid #1e3a8a !important; }}
+    /* 修正文字輸入欄位的垂直居中與內距 */
+    input {{ 
+        height: 41px !important; 
+        line-height: 41px !important; 
+        padding: 0 12px !important; 
+        border: none !important; /* 確保內層不帶線 */
+    }}
 
-    /* Tabs 標籤頁 */
-    .stTabs [data-baseweb="tab"] {{ height: 48px !important; font-weight: 800 !important; }}
-    .stTabs [aria-selected="true"] {{ background-color: #1e3a8a !important; color: white !important; }}
+    /* 備註欄 (TextArea) 強制對齊 */
+    .stTextArea textarea {{
+        height: 43px !important;
+        min-height: 43px !important;
+        padding: 8px 12px !important;
+        line-height: 1.3 !important;
+        border: 2px solid #1e3a8a !important;
+        border-radius: 8px !important;
+        resize: none !important;
+    }}
+
+    /* Tabs 標籤頁樣式 */
+    .stTabs [data-baseweb="tab"] {{ 
+        height: 50px !important; 
+        font-weight: 800 !important; 
+        font-size: 1.1rem !important;
+    }}
+    .stTabs [aria-selected="true"] {{ 
+        background-color: #1e3a8a !important; 
+        color: white !important; 
+    }}
     
     footer {{visibility: hidden;}}
 </style>
@@ -110,22 +136,22 @@ OPT = get_options()
 tab1, tab2, tab3 = st.tabs(["🖋️ 資料錄入", "📊 歷史紀錄", "🔍 預購追蹤"])
 
 with tab1:
-    if "rk_auto_dt" not in st.session_state: st.session_state.rk_auto_dt = 0
-    rk = st.session_state.rk_auto_dt
+    if "rk_v43" not in st.session_state: st.session_state.rk_v43 = 0
+    rk = st.session_state.rk_v43
     db_df = fetch_all_data()
 
-    # 第一行 (日期已改為後台預設，畫面上移除 c1)
+    # 第一列：批價與醫院 (2欄)
     c1, c2 = st.columns(2)
     d_price = c1.selectbox("批價內容", OPT.get("price"), key=f"pr_{rk}")
     d_hosp = c2.selectbox("使用醫院", OPT.get("hosp"), key=f"hs_{rk}")
     
-    # 第二行
+    # 第二列：科別、醫師、產品 (3欄)
     c3, c4, c5 = st.columns(3)
     d_dept = c3.selectbox("使用科別", OPT.get("dept"), key=f"dp_{rk}")
     d_dr = c4.text_input("醫師姓名", key=f"dr_{rk}")
     d_prod = c5.selectbox("產品項目", OPT.get("prod"), key=f"pd_{rk}")
 
-    # 第三行
+    # 第三列：規格與數量邏輯
     c6, c7, c8 = st.columns(3)
     d_spec = c6.text_input("規格", key=f"sp_{rk}")
     d_qty, d_pre_total, d_pre_today, can_sub = 0, 0, 0, True
@@ -146,25 +172,25 @@ with tab1:
     else:
         d_qty = c7.number_input("數量", min_value=1, value=1, key=f"qt_{rk}"); d_pre_today = d_qty
 
-    # 第四行
+    # 第四列：病人資訊
     c9, c10, c11 = st.columns(3)
     d_content = c9.text_input("產品內容(含預購)", key=f"cn_{rk}")
     d_pname = c10.text_input("病人名", key=f"pn_{rk}")
     d_pid = c11.text_input("病例號/ID", key=f"pi_{rk}")
 
-    # 第五行
+    # 第五列：手術細節
     c12, c13, c14 = st.columns(3)
     d_op = c12.text_input("手術名稱/部位", key=f"op_{rk}")
     d_loc = c13.selectbox("使用地點", OPT.get("loc"), key=f"lc_{rk}")
     d_blood = c14.selectbox("抽血人員", OPT.get("blood"), key=f"bl_{rk}")
 
-    # 第六行 (完美對齊區)
+    # 第六列：人員與備註 (提交按鈕對齊)
     c15, c16, c17 = st.columns(3)
     d_rep = c15.selectbox("跟刀人員", OPT.get("rep"), key=f"rp_{rk}")
     d_memo = c16.text_area("備註", key=f"me_{rk}")
     
     with c17:
-        st.write("") # 垂直推移對齊按鈕
+        st.write("") # 垂直推移
         if st.button("🚀 提交數據", use_container_width=True, disabled=not (can_sub and d_pid)):
             now_dt = datetime.now(tw_tz).strftime("%Y-%m-%d %H:%M:%S")
             temp_df = fetch_all_data()
@@ -177,10 +203,11 @@ with tab1:
             
             row = [now_dt, d_price, d_hosp, d_dept, d_dr, d_prod, d_spec, d_qty, d_pre_total, d_pre_today, final_bal, d_content, d_pname, d_pid, d_op, d_loc, d_blood, d_rep, d_memo]
             ss.worksheet("回應試算表").append_row(row, value_input_option='USER_ENTERED')
-            st.toast("✅ 存檔成功！")
+            st.toast("✅ 已成功記錄")
             st.cache_data.clear()
-            time.sleep(1); st.session_state.rk_auto_dt += 1; st.rerun()
+            time.sleep(1); st.session_state.rk_v43 += 1; st.rerun()
 
+# 頁籤 2 & 3
 with tab2:
     st.dataframe(fetch_all_data().iloc[::-1].head(50), use_container_width=True, hide_index=True)
 
