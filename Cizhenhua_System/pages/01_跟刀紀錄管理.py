@@ -10,19 +10,17 @@ tw_tz = timezone(timedelta(hours=8))
 SYS_TITLE = "01_跟刀紀錄管理"
 SPREADSHEET_ID = "1w2BDsPHHxgaz6PJhoPLXdh0UQJplA6rr42wLoLQIM9s"
 
-# 必須先設定 page_config
 st.set_page_config(page_title=SYS_TITLE, layout="centered", initial_sidebar_state="collapsed")
 
-# --- 2. 樣式精修 (精準定位，不影響 Tabs 功能) ---
+# --- 2. 樣式精修 (高度統一為 38px) ---
 st.markdown(f"""
 <style>
-    /* 1. 讓頂部導航條透明，不佔用空間，但不隱藏標籤頁 */
+    /* 頂部導航透明化 */
     [data-testid="stHeader"] {{
         background: rgba(0,0,0,0) !important;
         height: 0px !important;
     }}
     
-    /* 2. 修正頂部內距，讓標題貼近上緣但留有安全距離 */
     .block-container {{ 
         padding-top: 3.5rem !important; 
         max-width: 850px !important;
@@ -30,39 +28,43 @@ st.markdown(f"""
     }}
     .stApp {{ background-color: #F0F9F0 !important; }}
     
-    /* 3. 標題樣式 */
     .sys-title {{ 
-        text-align: center; 
-        font-size: 32px !important; 
-        font-weight: 900; 
-        color: #1e3a8a; 
-        margin-top: -15px !important;
-        margin-bottom: 15px !important; 
+        text-align: center; font-size: 32px !important; font-weight: 900; color: #1e3a8a; 
+        margin-top: -15px !important; margin-bottom: 15px !important; 
     }}
     
-    /* 4. 統一所有輸入框高度為 45px */
-    [data-testid="stWidgetLabel"] p {{ font-size: 1.1rem !important; font-weight: 700 !important; color: #1e293b !important; }}
-    div[data-baseweb="input"], div[data-baseweb="select"], div[data-baseweb="textarea"] {{
+    [data-testid="stWidgetLabel"] p {{ font-size: 1rem !important; font-weight: 700 !important; color: #1e293b !important; margin-bottom: 4px !important; }}
+    
+    /* 統一所有輸入組件高度為 38px */
+    div[data-baseweb="input"], div[data-baseweb="select"], div[data-baseweb="textarea"], .stDateInput div {{
         background-color: white !important; 
-        border: 2px solid #1e3a8a !important; 
-        border-radius: 8px !important; 
-        height: 45px !important;
+        border: 1.5px solid #1e3a8a !important; 
+        border-radius: 6px !important; 
+        height: 38px !important;
     }}
 
-    /* 5. 備註框高度強制對齊 */
+    /* 針對日期與下拉選單的文字垂直置中 */
+    .stTextInput input, .stSelectbox div[role="button"], .stDateInput input {{
+        line-height: 38px !important;
+        padding-top: 0px !important;
+        padding-bottom: 0px !important;
+        height: 36px !important;
+    }}
+
+    /* 備註框高度強制對齊 38px */
     .stTextArea textarea {{
-        height: 45px !important;
-        min-height: 45px !important;
-        padding: 8px 12px !important;
+        height: 38px !important;
+        min-height: 38px !important;
+        padding: 6px 10px !important;
         line-height: 1.2 !important;
         resize: none !important;
     }}
 
-    /* 6. Tabs 標籤頁樣式調整 (確保清晰可見) */
+    /* Tabs 標籤頁 */
     .stTabs [data-baseweb="tab"] {{ 
-        height: 52px !important; 
+        height: 48px !important; 
         font-weight: 800 !important; 
-        font-size: 1.2rem !important; 
+        font-size: 1.1rem !important; 
     }}
     .stTabs [aria-selected="true"] {{ 
         background-color: #1e3a8a !important; 
@@ -74,7 +76,7 @@ st.markdown(f"""
 <div class="sys-title">📋 {SYS_TITLE}</div>
 """, unsafe_allow_html=True)
 
-# --- 3. 數據核心 (Google Sheets 連線) ---
+# --- 3. 數據核心 ---
 @st.cache_resource(ttl=60)
 def get_ss():
     try:
@@ -121,8 +123,8 @@ OPT = get_options()
 tab1, tab2, tab3 = st.tabs(["🖋️ 資料錄入", "📊 歷史紀錄", "🔍 預購追蹤"])
 
 with tab1:
-    if "rk_final_fix" not in st.session_state: st.session_state.rk_final_fix = 0
-    rk = st.session_state.rk_final_fix
+    if "rk_38px" not in st.session_state: st.session_state.rk_38px = 0
+    rk = st.session_state.rk_38px
     db_df = fetch_all_data()
 
     # 第 1 行
@@ -176,7 +178,7 @@ with tab1:
     d_memo = c17.text_area("備註", key=f"me_{rk}")
     
     with c18:
-        st.write("") # 垂直對齊補償
+        st.write("") # 對齊補償
         if st.button("🚀 提交數據", use_container_width=True, disabled=not (can_sub and d_pid)):
             temp_df = fetch_all_data()
             prev_res = temp_df[(temp_df['病例號/ID'].astype(str).str.strip() == d_pid.strip()) & (temp_df['產品項目'] == d_prod)]
@@ -188,9 +190,9 @@ with tab1:
             
             row = [str(d_date), d_price, d_hosp, d_dept, d_dr, d_prod, d_spec, d_qty, d_pre_total, d_pre_today, final_bal, d_content, d_pname, d_pid, d_op, d_loc, d_blood, d_rep, d_memo]
             ss.worksheet("回應試算表").append_row(row, value_input_option='USER_ENTERED')
-            st.toast("✅ 已存檔！")
+            st.toast("✅ 已成功存檔！")
             st.cache_data.clear()
-            time.sleep(1); st.session_state.rk_final_fix += 1; st.rerun()
+            time.sleep(1); st.session_state.rk_38px += 1; st.rerun()
 
 with tab2:
     st.dataframe(fetch_all_data().iloc[::-1].head(50), use_container_width=True, hide_index=True)
