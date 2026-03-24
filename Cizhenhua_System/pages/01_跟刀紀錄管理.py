@@ -1,5 +1,5 @@
 import streamlit as st
-import pandas as pd
+import pd as pd
 import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime, timedelta, timezone
@@ -12,39 +12,26 @@ SPREADSHEET_ID = "1w2BDsPHHxgaz6PJhoPLXdh0UQJplA6rr42wLoLQIM9s"
 
 st.set_page_config(page_title=SYS_TITLE, layout="centered", initial_sidebar_state="collapsed")
 
-# --- 2. 樣式精修 (解決標題切割問題) ---
+# --- 2. 樣式精修 (確保標題完整顯示) ---
 st.markdown(f"""
 <style>
-      /* 修正 Padding-top 避免標題切割，並保持綠色基底 */
+    header {{ visibility: hidden; height: 0px !important; }}
     .block-container {{ 
         padding-top: 5rem !important; 
-        max-width: 750px !important;
+        max-width: 850px !important;
         background-color: #F0F9F0 !important; 
     }}
     .stApp {{ background-color: #F0F9F0 !important; }}
-    
-    /* 標題樣式 */
     .sys-title {{ 
-        text-align: center; 
-        font-size: 32px !important; 
-        font-weight: 900; 
-        color: #1e3a8a; 
-        margin-top: -20px !important;
-        margin-bottom: 10px !important; 
+        text-align: center; font-size: 32px !important; font-weight: 900; color: #1e3a8a; 
+        margin-top: -30px !important; margin-bottom: 20px !important; 
     }}
-    
-    /* 欄位標籤與輸入框 */
-    [data-testid="stWidgetLabel"] p {{ font-size: 1.15rem !important; font-weight: 700 !important; color: #1e293b !important; }}
+    [data-testid="stWidgetLabel"] p {{ font-size: 1.1rem !important; font-weight: 700 !important; color: #1e293b !important; }}
     div[data-baseweb="input"], div[data-baseweb="select"], div[data-baseweb="textarea"] {{
-        background-color: white !important; border: 2px solid #1e3a8a !important; border-radius: 8px !important; height: 45px !important;
+        background-color: white !important; border: 2px solid #1e3a8a !important; border-radius: 8px !important;
     }}
-    
-    /* Tab 樣式 */
-    .stTabs [data-baseweb="tab"] {{
-        height: 55px !important; background-color: white; font-weight: 800 !important; font-size: 1.3rem !important;
-    }}
+    .stTabs [data-baseweb="tab"] {{ height: 52px !important; font-weight: 800 !important; font-size: 1.2rem !important; }}
     .stTabs [aria-selected="true"] {{ background-color: #1e3a8a !important; color: white !important; }}
-    
     footer {{visibility: hidden;}}
 </style>
 <div class="sys-title">📋 {SYS_TITLE}</div>
@@ -98,55 +85,58 @@ OPT = get_options()
 tab1, tab2, tab3 = st.tabs(["🖋️ 資料錄入", "📊 歷史紀錄", "🔍 預購追蹤"])
 
 with tab1:
-    if "rk_v34" not in st.session_state: st.session_state.rk_v34 = 0
-    rk = st.session_state.rk_v34
+    if "rk_final" not in st.session_state: st.session_state.rk_final = 0
+    rk = st.session_state.rk_final
     db_df = fetch_all_data()
 
     # 第一列
     c1, c2, c3 = st.columns(3)
     d_date = c1.date_input("使用日期", value=datetime.now(tw_tz).date(), key=f"dt_{rk}")
-    d_dr = c2.text_input("醫師姓名", key=f"dr_{rk}")
-    d_content = c3.text_input("產品內容(含預購)", key=f"cn_{rk}")
+    d_price = c2.selectbox("批價內容", OPT.get("price"), key=f"pr_{rk}")
+    d_hosp = c3.selectbox("使用醫院", OPT.get("hosp"), key=f"hs_{rk}")
     
-    # 第二列 (預購邏輯區)
+    # 第二列
     c4, c5, c6 = st.columns(3)
-    d_price = c4.selectbox("批價內容", OPT.get("price"), key=f"pr_{rk}")
-    d_pre_total, d_pre_today, d_qty, can_sub = 0, 0, 0, True
+    d_dept = c4.selectbox("使用科別", OPT.get("dept"), key=f"dp_{rk}")
+    d_dr = c5.text_input("醫師姓名", key=f"dr_{rk}")
+    d_prod = c6.selectbox("產品項目", OPT.get("prod"), key=f"pd_{rk}")
 
+    # 第三列 (規格與數量邏輯)
+    c7, c8, c9 = st.columns(3)
+    d_spec = c7.text_input("規格", key=f"sp_{rk}")
+    d_qty, d_pre_total, d_pre_today, can_sub = 0, 0, 0, True
+    
     if d_price == "使用前次預購":
-        p_now = st.session_state.get(f"pi_{rk}", "").strip()
-        pr_now = st.session_state.get(f"pd_{rk}", "")
-        u_df = db_df[(db_df['病例號/ID'].astype(str).str.strip() == p_now) & (db_df['產品項目'] == pr_now)]
+        p_id = st.session_state.get(f"pi_{rk}", "").strip()
+        p_item = st.session_state.get(f"pd_{rk}", "")
+        u_df = db_df[(db_df['病例號/ID'].astype(str).str.strip() == p_id) & (db_df['產品項目'] == p_item)]
         bal = int(u_df.iloc[-1]['預購餘量']) if not u_df.empty else 0
         if bal > 0:
-            c6.success(f"目前餘量：{bal}")
-            d_pre_today = c5.number_input("扣除量", min_value=1, max_value=bal, value=1, key=f"py_{rk}"); d_qty = d_pre_today
+            c8.success(f"餘量：{bal}")
+            d_pre_today = c9.number_input("扣除量", min_value=1, max_value=bal, value=1, key=f"py_{rk}")
+            d_qty = d_pre_today
         else:
-            c5.warning("無餘額"); can_sub = False
+            c8.warning("無餘額"); can_sub = False
     elif d_price == "批價 + 預購":
-        d_pre_total = c5.number_input("預購總量", min_value=1, value=5, key=f"pt_{rk}")
-        d_pre_today = c6.number_input("當日扣除", min_value=1, value=1, key=f"py_{rk}"); d_qty = d_pre_today
+        d_pre_total = c8.number_input("預購總量", min_value=1, value=5, key=f"pt_{rk}")
+        d_pre_today = c9.number_input("當日批價量", min_value=1, value=1, key=f"py_{rk}")
+        d_qty = d_pre_today
     else:
-        d_qty = c5.number_input("數量", min_value=1, value=1, key=f"qt_{rk}"); d_pre_today = d_qty
+        d_qty = c8.number_input("數量", min_value=1, value=1, key=f"qt_{rk}")
+        d_pre_today = d_qty
 
-    # 第三列
-    c7, c8, c9 = st.columns(3)
-    d_prod = c7.selectbox("產品項目", OPT.get("prod"), key=f"pd_{rk}")
-    d_spec = c8.text_input("規格", key=f"sp_{rk}")
-    d_pname = c9.text_input("病人名", key=f"pn_{rk}")
-    
     # 第四列
     c10, c11, c12 = st.columns(3)
-    d_hosp = c10.selectbox("使用醫院", OPT.get("hosp"), key=f"hs_{rk}")
-    d_pid = c11.text_input("病例號/ID", key=f"pi_{rk}")
-    d_dept = c12.selectbox("使用科別", OPT.get("dept"), key=f"dp_{rk}")
-    
+    d_content = c10.text_input("產品內容(含預購)", key=f"cn_{rk}")
+    d_pname = c11.text_input("病人名", key=f"pn_{rk}")
+    d_pid = c12.text_input("病例號/ID", key=f"pi_{rk}")
+
     # 第五列
     c13, c14, c15 = st.columns(3)
-    d_op = c13.text_input("手術/部位", key=f"op_{rk}")
-    d_loc = c14.selectbox("地點", OPT.get("loc"), key=f"lc_{rk}")
+    d_op = c13.text_input("手術名稱/使用部位", key=f"op_{rk}")
+    d_loc = c14.selectbox("使用地點", OPT.get("loc"), key=f"lc_{rk}")
     d_blood = c15.selectbox("抽血人員", OPT.get("blood"), key=f"bl_{rk}")
-    
+
     # 第六列
     c16, c17, c18 = st.columns(3)
     d_rep = c16.selectbox("跟刀(操作)人員", OPT.get("rep"), key=f"rp_{rk}")
@@ -161,11 +151,17 @@ with tab1:
         elif d_price in ["批價 + 預購", "純預購寄庫"]: final_bal = curr_bal + (d_pre_total - d_pre_today)
         else: final_bal = 0
         
-        row = [str(d_date), d_price, d_hosp, d_dept, d_dr, d_prod, d_spec, d_qty, d_pre_total, d_pre_today, final_bal, d_content, d_pname, d_pid, d_op, d_loc, d_blood, d_rep, d_memo]
+        # 依照試算表 19 個欄位順序排列
+        row = [
+            str(d_date), d_price, d_hosp, d_dept, d_dr, d_prod, d_spec, d_qty, 
+            d_pre_total, d_pre_today, final_bal, d_content, d_pname, d_pid, 
+            d_op, d_loc, d_blood, d_rep, d_memo
+        ]
+        
         ss.worksheet("回應試算表").append_row(row, value_input_option='USER_ENTERED')
-        st.toast("✅ 已存檔！")
+        st.toast("✅ 已成功存檔！")
         st.cache_data.clear()
-        time.sleep(1); st.session_state.rk_v34 += 1; st.rerun()
+        time.sleep(1); st.session_state.rk_final += 1; st.rerun()
 
 with tab2:
     st.dataframe(fetch_all_data().iloc[::-1].head(50), use_container_width=True, hide_index=True)
