@@ -18,7 +18,7 @@ st.markdown(f"""
       /* 修正 Padding-top 避免標題切割，並保持綠色基底 */
     .block-container {{ 
         padding-top: 5rem !important; 
-        max-width: 900px !important;
+        max-width: 700px !important;
         background-color: #F0F9F0 !important; 
     }}
     .stApp {{ background-color: #F0F9F0 !important; }}
@@ -30,7 +30,7 @@ st.markdown(f"""
         font-weight: 900; 
         color: #1e3a8a; 
         margin-top: -20px !important;
-        margin-bottom: 25px !important; 
+        margin-bottom: 15px !important; 
     }}
     
     /* 欄位標籤與輸入框 */
