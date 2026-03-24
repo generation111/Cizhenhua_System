@@ -35,7 +35,7 @@ st.markdown(f"""
     
     [data-testid="stWidgetLabel"] p {{ font-size: 1rem !important; font-weight: 700 !important; color: #1e293b !important; margin-bottom: 4px !important; }}
     
-    /* 統一所有輸入組件高度為 38px */
+    /* 統一所有輸入組件高度為 40px */
     div[data-baseweb="input"], div[data-baseweb="select"], div[data-baseweb="textarea"], .stDateInput div {{
         background-color: white !important; 
         border: 1.5px solid #1e3a8a !important; 
