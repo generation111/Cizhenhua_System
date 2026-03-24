@@ -17,7 +17,7 @@ st.set_page_config(page_title=f"{SYS_TITLE}", layout="centered", initial_sidebar
 # --- 2. 樣式精修 (維持 42px 高度與藍綠配色) ---
 st.markdown(f"""
 <style>
-    .block-container {{ padding-top: 2rem !important; background-color: #F0F9F0 !important; }}
+    .block-container {{ padding-top: 2.8rem !important; background-color: #F0F9F0 !important; }}
     .stApp {{ background-color: #F0F9F0 !important; }}
     .sys-title {{ text-align: center; font-size: 28px !important; font-weight: 900; color: #1e3a8a; margin-bottom: 15px !important; }}
     [data-testid="stWidgetLabel"] p {{ font-size: 1.1rem !important; font-weight: 700 !important; color: #1e293b !important; margin-bottom: 2px !important; }}
