@@ -11,12 +11,13 @@ tw_tz = timezone(timedelta(hours=8))
 SYS_TITLE = "慈榛驊業務管理系統（終極修復結構版）"
 SPREADSHEET_ID = "1w2BDsPHHxgaz6PJhoPLXdh0UQJplA6rr42wLoLQIM9s"
 
+# 平板與電腦建議使用 centered 或 wide，這裡維持您指定的佈局
 st.set_page_config(page_title=f"{SYS_TITLE}", layout="centered", initial_sidebar_state="collapsed")
 
-# --- 2. 樣式精修 ---
+# --- 2. 樣式精修 (維持 42px 高度與藍綠配色) ---
 st.markdown(f"""
 <style>
-    .block-container {{ padding-top: 3rem !important; background-color: #F0F9F0 !important; }}
+    .block-container {{ padding-top: 2rem !important; background-color: #F0F9F0 !important; }}
     .stApp {{ background-color: #F0F9F0 !important; }}
     .sys-title {{ text-align: center; font-size: 28px !important; font-weight: 900; color: #1e3a8a; margin-bottom: 15px !important; }}
     [data-testid="stWidgetLabel"] p {{ font-size: 1.1rem !important; font-weight: 700 !important; color: #1e293b !important; margin-bottom: 2px !important; }}
@@ -37,25 +38,6 @@ st.markdown(f"""
     footer {{visibility: hidden;}}
 </style>
 """, unsafe_allow_html=True)
-
-# --- 3. 手勢滑動指令 ---
-components.html("""
-<script>
-    const doc = window.parent.document;
-    let touchstartX = 0; let touchendX = 0;
-    function handleGesture() {
-        const tabs = doc.querySelectorAll('button[data-baseweb="tab"]');
-        if (!tabs || tabs.length === 0) return;
-        let activeTabIndex = -1;
-        tabs.forEach((tab, index) => { if (tab.getAttribute('aria-selected') === 'true') activeTabIndex = index; });
-        const swipeDistance = touchendX - touchstartX;
-        if (swipeDistance < -80 && activeTabIndex < tabs.length - 1) tabs[activeTabIndex + 1].click();
-        if (swipeDistance > 80 && activeTabIndex > 0) tabs[activeTabIndex - 1].click();
-    }
-    doc.addEventListener('touchstart', e => { touchstartX = e.changedTouches[0].screenX; }, {passive: true});
-    doc.addEventListener('touchend', e => { touchendX = e.changedTouches[0].screenX; handleGesture(); }, {passive: true});
-</script>
-""", height=0)
 
 # --- 4. 數據核心 ---
 @st.cache_resource(ttl=60)
@@ -78,7 +60,6 @@ def fetch_all_data():
         data = ws.get_all_values()
         if len(data) > 1:
             df = pd.DataFrame(data[1:], columns=[str(h).strip() for h in data[0]])
-            # 數值轉換，標題改為「預購餘量」
             num_cols = ['預購總量', '當日批價量', '預購餘量', '數量']
             for col in num_cols:
                 if col in df.columns:
@@ -89,17 +70,12 @@ def fetch_all_data():
 
 def get_current_balance(df, pid, prod):
     if df.empty or not pid or not prod: return 0
-    user_df = df[(df['病例號/ID'].astype(str).str.strip() == str(pid).strip()) & 
-                (df['產品項目'].astype(str).str.strip() == str(prod).strip())]
+    # 精準比對 ID 與 產品
+    mask = (df['病例號/ID'].astype(str).str.strip() == str(pid).strip()) & \
+           (df['產品項目'].astype(str).str.strip() == str(prod).strip())
+    user_df = df[mask]
     if user_df.empty: return 0
-    # 讀取『預購餘量』欄位
-    if '預購餘量' in user_df.columns:
-        return int(user_df.iloc[-1]['預購餘量'])
-    else:
-        # 備援計算邏輯
-        total_in = user_df[user_df['批價內容'].isin(['批價 + 預購', '純預購寄庫'])]['預購總量'].sum()
-        total_out = user_df[user_df['批價內容'].isin(['批價 + 預購', '使用前次預購', '使用他人預購'])]['當日批價量'].sum()
-        return int(total_in - total_out)
+    return int(user_df.iloc[-1]['預購餘量']) if '預購餘量' in user_df.columns else 0
 
 @st.cache_data(ttl=60)
 def get_options():
@@ -116,7 +92,7 @@ def get_options():
             "blood": [x for x in df["抽血人員"].dropna().unique() if x],
             "rep": [x for x in df["跟刀(操作)人員"].dropna().unique() if x]
         }
-    except: return {"price":["單次批價使用", "批價 + 預購", "使用前次預購", "使用他人預購", "純預購寄庫"], "hosp":[], "dept":[], "prod":["3E PRP"], "loc":[], "blood":[], "rep":[]}
+    except: return {"price":["單次批價使用", "批價 + 預購", "使用前次預購", "使用他人預購", "純預購寄庫"], "hosp":[], "dept":[], "prod":["3E PRP"], "loc":[], "blood":[], "rep":["Eric", "林國慈", "曾子榮"]}
 
 OPT = get_options()
 
@@ -130,11 +106,13 @@ with tab1:
     status_msg = st.empty()
     db_df = fetch_all_data()
 
+    # 第一列：基礎資訊
     c1, c2, c3 = st.columns(3)
     d_date = c1.date_input("使用日期", value=datetime.now(tw_tz).date(), key=f"dt_{rk}")
     d_dr = c2.text_input("醫師姓名", key=f"dr_{rk}")
     d_content = c3.text_input("產品內容(含預購)", key=f"cn_{rk}")
     
+    # 第二列：批價邏輯
     c4, c5, c6 = st.columns(3)
     d_price = c4.selectbox("批價內容", OPT.get("price"), key=f"pr_{rk}")
     d_pre_total, d_pre_today, d_qty, can_submit = 0, 0, 0, True
@@ -158,41 +136,48 @@ with tab1:
     elif d_price == "純預購寄庫":
         d_pre_total = c5.number_input("預購總量", min_value=1, value=5, key=f"pt_{rk}"); d_qty = 0
 
+    # 第三列：產品與病人
     c7, c8, c9 = st.columns(3)
     d_prod = c7.selectbox("產品項目", OPT.get("prod"), key=f"pd_{rk}")
     d_spec = c8.text_input("規格", key=f"sp_{rk}")
     d_pname = c9.text_input("病人名", key=f"pn_{rk}")
     
+    # 第四列：院所資訊
     c10, c11, c12 = st.columns(3)
     d_hosp = c10.selectbox("使用醫院", OPT.get("hosp"), key=f"hs_{rk}")
     d_pid = c11.text_input("病例號/ID", key=f"pi_{rk}")
     d_dept = c12.selectbox("使用科別", OPT.get("dept"), key=f"dp_{rk}")
     
+    # 第五列：手術細節
     c13, c14, c15 = st.columns(3)
     d_opname = c13.text_input("手術/部位", key=f"op_{rk}")
     d_loc = c14.selectbox("地點", OPT.get("loc"), key=f"lc_{rk}")
     d_blood = c15.selectbox("抽血人員", OPT.get("blood"), key=f"bl_{rk}")
     
+    # 第六列：代表與備註
     c16, c17, c18 = st.columns(3)
-    d_rep = c16.selectbox("跟刀人員", OPT.get("rep"), key=f"rp_{rk}")
+    d_rep = c16.selectbox("跟刀(操作)人員", OPT.get("rep"), key=f"rp_{rk}")
     with c17: d_memo = st.text_area("備註", key=f"me_{rk}")
     with c18:
         st.write("")
-        if st.button("🚀 提交數據", key="sub_btn", disabled=not can_submit):
+        if st.button("🚀 提交數據", key="sub_btn", disabled=not (can_submit and d_pid)):
             try:
-                latest_df = fetch_all_data()
-                final_bal = get_current_balance(latest_df, d_pid, d_prod)
-                if d_price == "使用前次預購": final_bal -= d_pre_today
-                elif d_price in ["批價 + 預購", "純預購寄庫"]: final_bal += (d_pre_total - d_pre_today)
+                # 再次校準餘額
+                temp_df = fetch_all_data()
+                prev_bal = get_current_balance(temp_df, d_pid, d_prod)
+                
+                if d_price == "使用前次預購": final_bal = prev_bal - d_pre_today
+                elif d_price in ["批價 + 預購", "純預購寄庫"]: final_bal = prev_bal + (d_pre_total - d_pre_today)
                 elif d_price == "單次批價使用": final_bal = 0
-                else: final_bal = final_bal - d_pre_today
+                else: final_bal = prev_bal - d_pre_today
                 
                 row = [str(d_date), d_price, d_hosp, d_dept, d_dr, d_prod, d_spec, d_qty, d_pre_total, d_pre_today, final_bal, d_content, d_pname, d_pid, d_opname, d_loc, d_blood, d_rep, d_memo]
                 ss.worksheet("回應試算表").append_row(row, value_input_option='USER_ENTERED')
                 status_msg.success("✅ 已存檔！")
                 st.cache_data.clear()
                 time.sleep(1); st.session_state.rk_v33 += 1; st.rerun()
-            except: status_msg.error("提交異常")
+            except Exception as e:
+                status_msg.error(f"提交失敗: {e}")
 
 with tab2:
     if st.button("🔄 刷新歷史紀錄"): st.cache_data.clear(); st.rerun()
@@ -204,19 +189,11 @@ with tab3:
     if st.button("🔄 刷新追蹤資料"): st.cache_data.clear(); st.rerun()
     tracking_df = fetch_all_data()
     if not tracking_df.empty:
-        # 已修正為對應「預購餘量」
-        if '預購餘量' in tracking_df.columns:
-            latest_balance = tracking_df.groupby(['病例號/ID', '產品項目']).tail(1)
-            display_df = latest_balance[latest_balance['預購餘量'] > 0][['病例號/ID', '產品項目', '預購餘量']]
-        else:
-            summary = []
-            grouped = tracking_df.groupby(['病例號/ID', '產品項目'])
-            for (pid, prod), group in grouped:
-                bal = get_current_balance(tracking_df, pid, prod)
-                if bal > 0: summary.append([pid, prod, bal])
-            display_df = pd.DataFrame(summary, columns=['病例號/ID', '產品項目', '預購餘量'])
+        # 取每一組 ID+產品 的最後一筆，判斷餘額是否大於 0
+        latest_balance = tracking_df.groupby(['病例號/ID', '產品項目']).tail(1)
+        display_df = latest_balance[latest_balance['預購餘量'] > 0][['病例號/ID', '產品項目', '預購餘量']]
         
         if not display_df.empty:
             st.dataframe(display_df, use_container_width=True, hide_index=True)
         else:
-            st.write("目前無預購餘額。")
+            st.info("目前無預購餘額。")
