@@ -13,7 +13,7 @@ SPREADSHEET_ID = "1w2BDsPHHxgaz6PJhoPLXdh0UQJplA6rr42wLoLQIM9s"
 
 st.set_page_config(page_title=f"{SYS_TITLE}", layout="centered", initial_sidebar_state="collapsed")
 
-# --- 2. 樣式精修 (保持 42px 與 藍綠色系) ---
+# --- 2. 樣式精修 ---
 st.markdown(f"""
 <style>
     .block-container {{ padding-top: 3rem !important; background-color: #F0F9F0 !important; }}
@@ -34,12 +34,11 @@ st.markdown(f"""
     }}
     .stTabs [aria-selected="true"] {{ background-color: #1e3a8a !important; color: white !important; }}
     div.stButton > button {{ height: 48px !important; width: 100% !important; font-size: 1.2rem !important; font-weight: bold !important; background-color: #1e3a8a !important; color: white !important; }}
-    hr {{ display: none !important; }}
     footer {{visibility: hidden;}}
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. 手勢滑動指令 (保持不變) ---
+# --- 3. 手勢滑動指令 ---
 components.html("""
 <script>
     const doc = window.parent.document;
@@ -58,7 +57,7 @@ components.html("""
 </script>
 """, height=0)
 
-# --- 4. 數據核心 (優化欄位穩定性) ---
+# --- 4. 數據核心 ---
 @st.cache_resource(ttl=60)
 def get_ss():
     try:
@@ -71,7 +70,7 @@ def get_ss():
 
 ss = get_ss()
 
-@st.cache_data(ttl=5) # 縮短緩存時間確保資料即時
+@st.cache_data(ttl=5)
 def fetch_all_data():
     if not ss: return pd.DataFrame()
     try:
@@ -79,24 +78,25 @@ def fetch_all_data():
         data = ws.get_all_values()
         if len(data) > 1:
             df = pd.DataFrame(data[1:], columns=[str(h).strip() for h in data[0]])
-            # 強制轉換關鍵數值欄位
-            for col in ['預購總量', '當日批價量', '剩餘總量']:
-                if col in df.columns: df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+            # 數值轉換，標題改為「預購餘量」
+            num_cols = ['預購總量', '當日批價量', '預購餘量', '數量']
+            for col in num_cols:
+                if col in df.columns:
+                    df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
             return df
         return pd.DataFrame()
     except: return pd.DataFrame()
 
 def get_current_balance(df, pid, prod):
     if df.empty or not pid or not prod: return 0
-    # 確保 ID 比對不受空白或型別影響
     user_df = df[(df['病例號/ID'].astype(str).str.strip() == str(pid).strip()) & 
                 (df['產品項目'].astype(str).str.strip() == str(prod).strip())]
     if user_df.empty: return 0
-    # 取最後一筆更新的剩餘總量 (假設試算表有維護該欄位)
-    try:
-        return int(user_df.iloc[-1]['剩餘總量'])
-    except:
-        # 若無該欄位，則手動計算加總
+    # 讀取『預購餘量』欄位
+    if '預購餘量' in user_df.columns:
+        return int(user_df.iloc[-1]['預購餘量'])
+    else:
+        # 備援計算邏輯
         total_in = user_df[user_df['批價內容'].isin(['批價 + 預購', '純預購寄庫'])]['預購總量'].sum()
         total_out = user_df[user_df['批價內容'].isin(['批價 + 預購', '使用前次預購', '使用他人預購'])]['當日批價量'].sum()
         return int(total_in - total_out)
@@ -139,7 +139,6 @@ with tab1:
     d_price = c4.selectbox("批價內容", OPT.get("price"), key=f"pr_{rk}")
     d_pre_total, d_pre_today, d_qty, can_submit = 0, 0, 0, True
 
-    # 修復邏輯：確保 ID 與 產品 變動時能即時重新計算
     if d_price == "單次批價使用":
         d_qty = c5.number_input("數量", min_value=1, value=1, key=f"qt_{rk}"); d_pre_today = d_qty
     elif d_price == "批價 + 預購":
@@ -153,15 +152,14 @@ with tab1:
             c6.success(f"餘量：{cur_bal}")
             d_pre_today = c5.number_input("扣除量", min_value=1, max_value=cur_bal, value=1, key=f"py_{rk}"); d_qty = d_pre_today
         else:
-            c5.warning("餘額不足或無ID")
-            can_submit = False
+            c5.warning("餘額不足或無ID"); can_submit = False
     elif d_price == "使用他人預購":
         d_qty = c5.number_input("數量", min_value=1, value=1, key=f"qt_{rk}"); d_pre_today = d_qty
     elif d_price == "純預購寄庫":
         d_pre_total = c5.number_input("預購總量", min_value=1, value=5, key=f"pt_{rk}"); d_qty = 0
 
     c7, c8, c9 = st.columns(3)
-    d_prod = c7.selectbox("產品項目", OPT.get("prod"), key=f"pd_{rk}") # key 必須與上方計算邏輯一致
+    d_prod = c7.selectbox("產品項目", OPT.get("prod"), key=f"pd_{rk}")
     d_spec = c8.text_input("規格", key=f"sp_{rk}")
     d_pname = c9.text_input("病人名", key=f"pn_{rk}")
     
@@ -182,7 +180,6 @@ with tab1:
         st.write("")
         if st.button("🚀 提交數據", key="sub_btn", disabled=not can_submit):
             try:
-                # 重新獲取最新餘額
                 latest_df = fetch_all_data()
                 final_bal = get_current_balance(latest_df, d_pid, d_prod)
                 if d_price == "使用前次預購": final_bal -= d_pre_today
@@ -202,18 +199,23 @@ with tab2:
     hist_df = fetch_all_data()
     if not hist_df.empty:
         st.dataframe(hist_df.iloc[::-1].head(50), use_container_width=True, hide_index=True)
-    else:
-        st.info("尚無歷史資料或載入中...")
 
 with tab3:
     if st.button("🔄 刷新追蹤資料"): st.cache_data.clear(); st.rerun()
     tracking_df = fetch_all_data()
     if not tracking_df.empty:
-        # 修正分頁 3 顯示邏輯：以 ID 與 產品 分組呈現剩餘總量
-        tracking_df['剩餘總量'] = pd.to_numeric(tracking_df['剩餘總量'], errors='coerce').fillna(0)
-        # 取得每個 ID + 產品 的最後一筆餘額
-        latest_balance = tracking_df.groupby(['病例號/ID', '產品項目']).tail(1)
-        display_df = latest_balance[latest_balance['剩餘總量'] > 0][['病例號/ID', '產品項目', '剩餘總量']]
+        # 已修正為對應「預購餘量」
+        if '預購餘量' in tracking_df.columns:
+            latest_balance = tracking_df.groupby(['病例號/ID', '產品項目']).tail(1)
+            display_df = latest_balance[latest_balance['預購餘量'] > 0][['病例號/ID', '產品項目', '預購餘量']]
+        else:
+            summary = []
+            grouped = tracking_df.groupby(['病例號/ID', '產品項目'])
+            for (pid, prod), group in grouped:
+                bal = get_current_balance(tracking_df, pid, prod)
+                if bal > 0: summary.append([pid, prod, bal])
+            display_df = pd.DataFrame(summary, columns=['病例號/ID', '產品項目', '預購餘量'])
+        
         if not display_df.empty:
             st.dataframe(display_df, use_container_width=True, hide_index=True)
         else:
