@@ -12,16 +12,15 @@ SPREADSHEET_ID = "1w2BDsPHHxgaz6PJhoPLXdh0UQJplA6rr42wLoLQIM9s"
 
 st.set_page_config(page_title=SYS_TITLE, layout="centered", initial_sidebar_state="collapsed")
 
-# --- 2. 樣式精修 (精準隱藏頂部條，不遮擋 Tabs) ---
+# --- 2. 樣式精修 (徹底解決對齊與框線問題) ---
 st.markdown(f"""
 <style>
-    /* 修正：只隱藏頂部透明裝飾條，不影響 Tabs 顯示 */
+    /* 1. 頂部狀態列微調，保留功能不遮擋 */
     [data-testid="stHeader"] {{
-        visibility: hidden;
+        background: rgba(0,0,0,0) !important;
         height: 0px !important;
     }}
     
-    /* 容器 Padding 恢復，確保標題不被切割且貼近上緣 */
     .block-container {{ 
         padding-top: 3.5rem !important; 
         max-width: 850px !important;
@@ -29,44 +28,63 @@ st.markdown(f"""
     }}
     .stApp {{ background-color: #F0F9F0 !important; }}
     
-    /* 標題樣式 */
     .sys-title {{ 
-        text-align: center; 
-        font-size: 32px !important; 
-        font-weight: 900; 
-        color: #1e3a8a; 
-        margin-top: -15px !important;
-        margin-bottom: 15px !important; 
+        text-align: center; font-size: 32px !important; font-weight: 900; color: #1e3a8a; 
+        margin-top: -15px !important; margin-bottom: 20px !important; 
     }}
     
-    /* 統一所有輸入框高度為 38px (佰哥指定) */
-    [data-testid="stWidgetLabel"] p {{ font-size: 1rem !important; font-weight: 700 !important; color: #1e293b !important; margin-bottom: 4px !important; }}
-    
-    div[data-baseweb="input"], div[data-baseweb="select"], div[data-baseweb="textarea"], .stDateInput div {{
-        background-color: white !important; 
-        border: 1.5px solid #1e3a8a !important; 
-        border-radius: 6px !important; 
-        height: 38px !important;
+    /* 2. 標籤與字體設定 */
+    [data-testid="stWidgetLabel"] p {{ 
+        font-size: 0.95rem !important; 
+        font-weight: 700 !important; 
+        color: #1e293b !important; 
+        margin-bottom: 2px !important; 
     }}
 
-    /* 備註框高度強制對齊 38px */
+    /* 3. 核心修正：針對所有輸入框的外殼進行統一 */
+    /* 我們不再設定 div 的高度，而是設定內層容器的高度，避免框線重疊 */
+    
+    /* 針對 text_input, selectbox, date_input 的統一外觀 */
+    div[data-baseweb="input"], 
+    div[data-baseweb="select"] > div, 
+    div[data-baseweb="base-input"] {{
+        height: 38px !important;
+        background-color: white !important;
+        border: 1px solid #1e3a8a !important; /* 統一單一邊框線 */
+        border-radius: 6px !important;
+    }}
+
+    /* 移除 Streamlit 預設的焦點藍色外框，避免視覺重複 */
+    div[data-baseweb="input"]:focus-within, 
+    div[data-baseweb="select"] > div:focus-within {{
+        border-color: #3b82f6 !important;
+        box-shadow: none !important;
+    }}
+
+    /* 4. 備註欄 (TextArea) 特化對齊 */
     .stTextArea textarea {{
         height: 38px !important;
         min-height: 38px !important;
-        padding: 6px 10px !important;
         line-height: 1.2 !important;
-        resize: none !important;
+        padding: 8px !important;
+        border: none !important; /* 內部不重複線 */
+    }}
+    
+    /* 確保輸入文字垂直居中 */
+    input {{
+        padding-top: 0px !important;
+        padding-bottom: 0px !important;
     }}
 
-    /* Tabs 樣式調整 (確保清晰可點擊) */
+    /* 5. Tabs 標籤頁美化 */
     .stTabs [data-baseweb="tab"] {{ 
         height: 48px !important; 
         font-weight: 800 !important; 
-        font-size: 1.1rem !important; 
     }}
     .stTabs [aria-selected="true"] {{ 
         background-color: #1e3a8a !important; 
         color: white !important; 
+        border-radius: 5px 5px 0 0;
     }}
     
     footer {{visibility: hidden;}}
@@ -74,7 +92,7 @@ st.markdown(f"""
 <div class="sys-title">📋 {SYS_TITLE}</div>
 """, unsafe_allow_html=True)
 
-# --- 3. 數據核心 ---
+# --- 3. 數據核心 (保持不變) ---
 @st.cache_resource(ttl=60)
 def get_ss():
     try:
@@ -82,7 +100,7 @@ def get_ss():
         if "private_key" in creds_info: creds_info["private_key"] = creds_info["private_key"].replace("\\n", "\n")
         creds = Credentials.from_service_account_info(creds_info, scopes=["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"])
         return gspread.authorize(creds).open_by_key(SPREADSHEET_ID)
-    except Exception: return None
+    except: return None
 
 ss = get_ss()
 
@@ -96,7 +114,7 @@ def fetch_all_data():
         for col in ['預購總量', '當日批價量', '預購餘量', '數量']:
             if col in df.columns: df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
         return df
-    except Exception: return pd.DataFrame()
+    except: return pd.DataFrame()
 
 @st.cache_data(ttl=60)
 def get_options():
@@ -113,31 +131,31 @@ def get_options():
             "loc": [x for x in df["使用地點"].dropna().unique() if x] if "使用地點" in df.columns else ["血管攝影室", "開刀房"],
             "blood": [x for x in df["抽血人員"].dropna().unique() if x]
         }
-    except Exception: return {"price":["單次批價使用", "批價 + 預購", "使用前次預購", "使用他人預購", "純預購寄庫"], "hosp":[], "dept":[], "prod":["3E PRP"], "rep":["Eric", "林國慈", "曾子榮"]}
+    except: return {"price":["單次批價使用", "批價 + 預購", "使用前次預購", "使用他人預購", "純預購寄庫"], "hosp":[], "dept":[], "prod":["3E PRP"], "rep":["Eric", "林國慈", "曾子榮"]}
 
 OPT = get_options()
 
-# --- 4. 介面佈局 ---
+# --- 4. 介面佈局 (保持邏輯一致) ---
 tab1, tab2, tab3 = st.tabs(["🖋️ 資料錄入", "📊 歷史紀錄", "🔍 預購追蹤"])
 
 with tab1:
-    if "rk_v38_fix" not in st.session_state: st.session_state.rk_v38_fix = 0
-    rk = st.session_state.rk_v38_fix
+    if "rk_ui_fix" not in st.session_state: st.session_state.rk_ui_fix = 0
+    rk = st.session_state.rk_ui_fix
     db_df = fetch_all_data()
 
-    # 第 1 行
+    # 第一行
     c1, c2, c3 = st.columns(3)
     d_date = c1.date_input("使用日期", value=datetime.now(tw_tz).date(), key=f"dt_{rk}")
     d_price = c2.selectbox("批價內容", OPT.get("price"), key=f"pr_{rk}")
     d_hosp = c3.selectbox("使用醫院", OPT.get("hosp"), key=f"hs_{rk}")
     
-    # 第 2 行
+    # 第二行
     c4, c5, c6 = st.columns(3)
     d_dept = c4.selectbox("使用科別", OPT.get("dept"), key=f"dp_{rk}")
     d_dr = c5.text_input("醫師姓名", key=f"dr_{rk}")
     d_prod = c6.selectbox("產品項目", OPT.get("prod"), key=f"pd_{rk}")
 
-    # 第 3 行
+    # 第三行
     c7, c8, c9 = st.columns(3)
     d_spec = c7.text_input("規格", key=f"sp_{rk}")
     d_qty, d_pre_total, d_pre_today, can_sub = 0, 0, 0, True
@@ -158,30 +176,29 @@ with tab1:
     else:
         d_qty = c8.number_input("數量", min_value=1, value=1, key=f"qt_{rk}"); d_pre_today = d_qty
 
-    # 第 4 行
+    # 第四行
     c10, c11, c12 = st.columns(3)
     d_content = c10.text_input("產品內容(含預購)", key=f"cn_{rk}")
     d_pname = c11.text_input("病人名", key=f"pn_{rk}")
     d_pid = c12.text_input("病例號/ID", key=f"pi_{rk}")
 
-    # 第 5 行
+    # 第五行
     c13, c14, c15 = st.columns(3)
     d_op = c13.text_input("手術名稱/使用部位", key=f"op_{rk}")
     d_loc = c14.selectbox("使用地點", OPT.get("loc"), key=f"lc_{rk}")
     d_blood = c15.selectbox("抽血人員", OPT.get("blood"), key=f"bl_{rk}")
 
-    # 第 6 行
+    # 第六行
     c16, c17, c18 = st.columns(3)
     d_rep = c16.selectbox("跟刀(操作)人員", OPT.get("rep"), key=f"rp_{rk}")
     d_memo = c17.text_area("備註", key=f"me_{rk}")
     
     with c18:
-        st.write("") # 對齊提交按鈕
+        st.write("") # 對齊按鈕
         if st.button("🚀 提交數據", use_container_width=True, disabled=not (can_sub and d_pid)):
             temp_df = fetch_all_data()
             prev_res = temp_df[(temp_df['病例號/ID'].astype(str).str.strip() == d_pid.strip()) & (temp_df['產品項目'] == d_prod)]
             curr_bal = int(prev_res.iloc[-1]['預購餘量']) if not prev_res.empty else 0
-            
             if d_price == "使用前次預購": final_bal = curr_bal - d_pre_today
             elif d_price in ["批價 + 預購", "純預購寄庫"]: final_bal = curr_bal + (d_pre_total - d_pre_today)
             else: final_bal = 0
@@ -190,7 +207,7 @@ with tab1:
             ss.worksheet("回應試算表").append_row(row, value_input_option='USER_ENTERED')
             st.toast("✅ 已成功存檔！")
             st.cache_data.clear()
-            time.sleep(1); st.session_state.rk_v38_fix += 1; st.rerun()
+            time.sleep(1); st.session_state.rk_ui_fix += 1; st.rerun()
 
 with tab2:
     st.dataframe(fetch_all_data().iloc[::-1].head(50), use_container_width=True, hide_index=True)
