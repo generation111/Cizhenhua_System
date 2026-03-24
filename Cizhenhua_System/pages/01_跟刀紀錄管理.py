@@ -1,5 +1,5 @@
 import streamlit as st
-import pandas as pd  # <-- 這裡修正：從 pd 改回 pandas
+import pandas as pd  # 修正：確保是 pandas
 import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime, timedelta, timezone
@@ -12,7 +12,7 @@ SPREADSHEET_ID = "1w2BDsPHHxgaz6PJhoPLXdh0UQJplA6rr42wLoLQIM9s"
 
 st.set_page_config(page_title=SYS_TITLE, layout="centered", initial_sidebar_state="collapsed")
 
-# --- 2. 樣式精修 (確保標題完整顯示) ---
+# --- 2. 樣式精修 (強制統一高度) ---
 st.markdown(f"""
 <style>
     header {{ visibility: hidden; height: 0px !important; }}
@@ -22,14 +22,31 @@ st.markdown(f"""
         background-color: #F0F9F0 !important; 
     }}
     .stApp {{ background-color: #F0F9F0 !important; }}
+    
     .sys-title {{ 
         text-align: center; font-size: 32px !important; font-weight: 900; color: #1e3a8a; 
         margin-top: -30px !important; margin-bottom: 20px !important; 
     }}
+    
     [data-testid="stWidgetLabel"] p {{ font-size: 1.1rem !important; font-weight: 700 !important; color: #1e293b !important; }}
+    
+    /* 統一所有輸入框高度為 45px */
     div[data-baseweb="input"], div[data-baseweb="select"], div[data-baseweb="textarea"] {{
-        background-color: white !important; border: 2px solid #1e3a8a !important; border-radius: 8px !important;
+        background-color: white !important; 
+        border: 2px solid #1e3a8a !important; 
+        border-radius: 8px !important; 
+        height: 45px !important;
     }}
+
+    /* 特別針對 text_area (備註欄) 進行內部高度修剪 */
+    .stTextArea textarea {{
+        height: 45px !important;
+        min-height: 45px !important;
+        padding: 8px 12px !important;
+        line-height: 1.2 !important;
+        resize: none !important; /* 禁止使用者手動拉大破壞佈局 */
+    }}
+
     .stTabs [data-baseweb="tab"] {{ height: 52px !important; font-weight: 800 !important; font-size: 1.2rem !important; }}
     .stTabs [aria-selected="true"] {{ background-color: #1e3a8a !important; color: white !important; }}
     footer {{visibility: hidden;}}
@@ -56,8 +73,7 @@ def fetch_all_data():
         ws = ss.worksheet("回應試算表")
         data = ws.get_all_values()
         df = pd.DataFrame(data[1:], columns=[str(h).strip() for h in data[0]])
-        num_cols = ['預購總量', '當日批價量', '預購餘量', '數量']
-        for col in num_cols:
+        for col in ['預購總量', '當日批價量', '預購餘量', '數量']:
             if col in df.columns: df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
         return df
     except: return pd.DataFrame()
@@ -89,19 +105,19 @@ with tab1:
     rk = st.session_state.rk_final
     db_df = fetch_all_data()
 
-    # 第一列
+    # 第一行
     c1, c2, c3 = st.columns(3)
     d_date = c1.date_input("使用日期", value=datetime.now(tw_tz).date(), key=f"dt_{rk}")
     d_price = c2.selectbox("批價內容", OPT.get("price"), key=f"pr_{rk}")
     d_hosp = c3.selectbox("使用醫院", OPT.get("hosp"), key=f"hs_{rk}")
     
-    # 第二列
+    # 第二行
     c4, c5, c6 = st.columns(3)
     d_dept = c4.selectbox("使用科別", OPT.get("dept"), key=f"dp_{rk}")
     d_dr = c5.text_input("醫師姓名", key=f"dr_{rk}")
     d_prod = c6.selectbox("產品項目", OPT.get("prod"), key=f"pd_{rk}")
 
-    # 第三列 (規格與數量邏輯)
+    # 第三行
     c7, c8, c9 = st.columns(3)
     d_spec = c7.text_input("規格", key=f"sp_{rk}")
     d_qty, d_pre_total, d_pre_today, can_sub = 0, 0, 0, True
@@ -125,44 +141,41 @@ with tab1:
         d_qty = c8.number_input("數量", min_value=1, value=1, key=f"qt_{rk}")
         d_pre_today = d_qty
 
-    # 第四列
+    # 第四行
     c10, c11, c12 = st.columns(3)
     d_content = c10.text_input("產品內容(含預購)", key=f"cn_{rk}")
     d_pname = c11.text_input("病人名", key=f"pn_{rk}")
     d_pid = c12.text_input("病例號/ID", key=f"pi_{rk}")
 
-    # 第五列
+    # 第五行
     c13, c14, c15 = st.columns(3)
     d_op = c13.text_input("手術名稱/使用部位", key=f"op_{rk}")
     d_loc = c14.selectbox("使用地點", OPT.get("loc"), key=f"lc_{rk}")
     d_blood = c15.selectbox("抽血人員", OPT.get("blood"), key=f"bl_{rk}")
 
-    # 第六列
+    # 第六行 (高度一致化重點區)
     c16, c17, c18 = st.columns(3)
     d_rep = c16.selectbox("跟刀(操作)人員", OPT.get("rep"), key=f"rp_{rk}")
-    d_memo = c17.text_area("備註", key=f"me_{rk}")
+    d_memo = c17.text_area("備註", key=f"me_{rk}") # 透過 CSS 強制縮減高度
     
-    if c18.button("🚀 提交數據", use_container_width=True, disabled=not (can_sub and d_pid)):
-        temp_df = fetch_all_data()
-        prev_res = temp_df[(temp_df['病例號/ID'].astype(str).str.strip() == d_pid.strip()) & (temp_df['產品項目'] == d_prod)]
-        curr_bal = int(prev_res.iloc[-1]['預購餘量']) if not prev_res.empty else 0
-        
-        if d_price == "使用前次預購": final_bal = curr_bal - d_pre_today
-        elif d_price in ["批價 + 預購", "純預購寄庫"]: final_bal = curr_bal + (d_pre_total - d_pre_today)
-        else: final_bal = 0
-        
-        # 依照試算表 19 個欄位順序排列
-        row = [
-            str(d_date), d_price, d_hosp, d_dept, d_dr, d_prod, d_spec, d_qty, 
-            d_pre_total, d_pre_today, final_bal, d_content, d_pname, d_pid, 
-            d_op, d_loc, d_blood, d_rep, d_memo
-        ]
-        
-        ss.worksheet("回應試算表").append_row(row, value_input_option='USER_ENTERED')
-        st.toast("✅ 已成功存檔！")
-        st.cache_data.clear()
-        time.sleep(1); st.session_state.rk_final += 1; st.rerun()
+    with c18:
+        st.write("") # 稍微留白對齊按鈕
+        if st.button("🚀 提交數據", use_container_width=True, disabled=not (can_sub and d_pid)):
+            temp_df = fetch_all_data()
+            prev_res = temp_df[(temp_df['病例號/ID'].astype(str).str.strip() == d_pid.strip()) & (temp_df['產品項目'] == d_prod)]
+            curr_bal = int(prev_res.iloc[-1]['預購餘量']) if not prev_res.empty else 0
+            
+            if d_price == "使用前次預購": final_bal = curr_bal - d_pre_today
+            elif d_price in ["批價 + 預購", "純預購寄庫"]: final_bal = curr_bal + (d_pre_total - d_pre_today)
+            else: final_bal = 0
+            
+            row = [str(d_date), d_price, d_hosp, d_dept, d_dr, d_prod, d_spec, d_qty, d_pre_total, d_pre_today, final_bal, d_content, d_pname, d_pid, d_op, d_loc, d_blood, d_rep, d_memo]
+            ss.worksheet("回應試算表").append_row(row, value_input_option='USER_ENTERED')
+            st.toast("✅ 已存檔！")
+            st.cache_data.clear()
+            time.sleep(1); st.session_state.rk_final += 1; st.rerun()
 
+# --- Tab 2 & 3 保持原樣 ---
 with tab2:
     st.dataframe(fetch_all_data().iloc[::-1].head(50), use_container_width=True, hide_index=True)
 
