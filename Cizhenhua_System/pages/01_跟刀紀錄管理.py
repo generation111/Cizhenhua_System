@@ -22,7 +22,7 @@ st.markdown(f"""
     [data-testid="stSidebar"] {{ min-width: 220px !important; max-width: 220px !important; }}
     
     .block-container {{ 
-        padding-top: 2rem !important; 
+        padding-top: 4rem !important; 
         max-width: 1000px !important;
         background-color: #F0F9F0 !important; 
     }}
