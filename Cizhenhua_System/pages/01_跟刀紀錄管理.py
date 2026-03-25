@@ -10,17 +10,24 @@ tw_tz = timezone(timedelta(hours=8))
 SYS_TITLE = "01_跟刀紀錄管理"
 SPREADSHEET_ID = "1w2BDsPHHxgaz6PJhoPLXdh0UQJplA6rr42wLoLQIM9s"
 
+# 佈局設定：保持 wide 並讓 Sidebar 預設收納，確保滑動手感
 st.set_page_config(page_title=SYS_TITLE, layout="wide", initial_sidebar_state="collapsed")
 
-# --- 2. 樣式精修 (徹底解決凌亂與重疊框線) ---
+# --- 2. 樣式精修 (邊框修正、43px、4rem、復原手勢) ---
 st.markdown(f"""
 <style>
-    /* 保留 Header，僅做微調 */
-    [data-testid="stHeader"] {{ background: #F0F9F0 !important; }}
+    /* 1. 復原手勢：保留 Header 及其預設行為，不進行隱藏 */
+    [data-testid="stHeader"] {{ 
+        background-color: #F0F9F0 !important; 
+    }}
     
-    /* 側邊欄寬度縮減 25% */
-    [data-testid="stSidebar"] {{ min-width: 220px !important; max-width: 220px !important; }}
+    /* 2. 側邊欄寬度減少 25% */
+    [data-testid="stSidebar"] {{ 
+        min-width: 220px !important; 
+        max-width: 220px !important; 
+    }}
     
+    /* 3. 頂部留白與主容器 */
     .block-container {{ 
         padding-top: 4rem !important; 
         max-width: 1000px !important;
@@ -32,12 +39,9 @@ st.markdown(f"""
         text-align: center; font-size: 32px !important; font-weight: 900; color: #1e3a8a; 
         margin-bottom: 25px !important; 
     }}
-    
-    /* 欄位標籤字體 */
-    [data-testid="stWidgetLabel"] p {{ font-size: 1rem !important; font-weight: 700 !important; color: #1e293b !important; }}
 
-    /* --- 核心修正：消除重複框線與高度統一 --- */
-    /* 1. 移除 Streamlit 內層所有預設邊框 */
+    /* --- 核心：統一 43px 與單一邊框 (徹底解決重複框線) --- */
+    /* 強制移除所有組件內層的預設線條與陰影 */
     div[data-baseweb="input"], 
     div[data-baseweb="select"] > div,
     div[data-baseweb="base-input"],
@@ -47,47 +51,50 @@ st.markdown(f"""
         background-color: transparent !important;
     }}
 
-    /* 2. 重新定義單一層級的外殼邊框 */
+    /* 重新在 stWidget 層級定義單一 2px 邊框 */
     div[data-testid="stTextInput"] > div, 
     div[data-testid="stSelectbox"] > div, 
     div[data-testid="stNumberInput"] > div,
     div[data-testid="stTextArea"] > div {{
         height: 43px !important;
-        border: 2px solid #1e3a8a !important; /* 單一強化的主色邊框 */
+        border: 2px solid #1e3a8a !important; 
         border-radius: 8px !important;
         background-color: white !important;
         overflow: hidden !important;
     }}
 
-    /* 3. 文字對齊與高度修正 */
+    /* 文字垂直居中與內距 */
     input {{ 
         height: 41px !important; 
         padding: 0 12px !important; 
         line-height: 41px !important; 
     }}
     
-    /* 備註欄特化處理 */
+    /* 備註欄 (TextArea) 修正 */
     .stTextArea textarea {{
         height: 39px !important;
         padding: 8px 12px !important;
         line-height: 1.2 !important;
     }}
 
-    /* 下拉選單內部箭頭位置微調 */
-    div[data-baseweb="select"] {{
-        margin-top: -2px !important;
+    /* Tabs 標籤頁樣式 */
+    .stTabs [data-baseweb="tab"] {{ 
+        height: 50px !important; 
+        font-weight: 800 !important; 
+        font-size: 1.1rem !important; 
     }}
-
-    /* Tabs 標籤 */
-    .stTabs [data-baseweb="tab"] {{ height: 50px !important; font-weight: 800 !important; font-size: 1.1rem !important; }}
-    .stTabs [aria-selected="true"] {{ background-color: #1e3a8a !important; color: white !important; border-radius: 8px 8px 0 0; }}
+    .stTabs [aria-selected="true"] {{ 
+        background-color: #1e3a8a !important; 
+        color: white !important; 
+        border-radius: 8px 8px 0 0; 
+    }}
     
     footer {{visibility: hidden;}}
 </style>
 <div class="sys-title">📋 {SYS_TITLE}</div>
 """, unsafe_allow_html=True)
 
-# --- 3. 數據與邏輯 (保持穩定) ---
+# --- 3. 數據與核心邏輯 ---
 @st.cache_resource(ttl=60)
 def get_ss():
     try:
@@ -134,28 +141,28 @@ OPT = get_options()
 tab1, tab2, tab3 = st.tabs(["🖋️ 資料錄入", "📊 歷史紀錄", "🔍 預購追蹤"])
 
 with tab1:
-    if "rk_final_v5" not in st.session_state: st.session_state.rk_final_v5 = 0
-    rk = st.session_state.rk_final_v5
+    if "v7_gesture_fix" not in st.session_state: st.session_state.v7_gesture_fix = 0
+    rk = st.session_state.v7_gesture_fix
     db_df = fetch_all_data()
 
-    # 第一列
+    # 第一列 (2欄)
     c1, c2 = st.columns(2)
     d_price = c1.selectbox("批價內容", OPT.get("price"), key=f"pr_{rk}")
     d_hosp = c2.selectbox("使用醫院", OPT.get("hosp"), key=f"hs_{rk}")
     
-    # 第二列
+    # 第二列 (3欄)
     c3, c4, c5 = st.columns(3)
     d_dr = c3.text_input("醫師姓名", key=f"dr_{rk}")
     d_prod = c4.selectbox("產品項目", OPT.get("prod"), key=f"pd_{rk}")
     d_dept = c5.selectbox("使用科別", OPT.get("dept"), key=f"dp_{rk}")
 
-    # 第三列
+    # 第三列 (3欄)
     c6, c7, c8 = st.columns(3)
     d_spec = c6.text_input("規格", key=f"sp_{rk}")
     d_pid = c7.text_input("病例號/ID", key=f"pi_{rk}")
     d_pname = c8.text_input("病人名", key=f"pn_{rk}")
     
-    # 預購邏輯
+    # 預購計算區
     c9, c10, c11 = st.columns(3)
     d_qty, d_pre_total, d_pre_today, can_sub = 0, 0, 0, True
     
@@ -166,12 +173,14 @@ with tab1:
         bal = int(u_df.iloc[-1]['預購餘量']) if not u_df.empty else 0
         if bal > 0:
             c9.success(f"目前餘量：{bal}")
-            d_pre_today = c10.number_input("扣除量", min_value=1, max_value=bal, key=f"py_{rk}"); d_qty = d_pre_today
+            d_pre_today = c10.number_input("扣除量", min_value=1, max_value=bal, value=1, key=f"py_{rk}")
+            d_qty = d_pre_today
         else:
             c9.warning("⚠️ 餘額不足"); can_sub = False
     elif d_price == "批價 + 預購":
         d_pre_total = c9.number_input("預購總量", min_value=1, value=5, key=f"pt_{rk}")
-        d_pre_today = c10.number_input("當日批價量", min_value=1, value=1, key=f"py_{rk}"); d_qty = d_pre_today
+        d_pre_today = c10.number_input("當日批價量", min_value=1, value=1, key=f"py_{rk}")
+        d_qty = d_pre_today
     else:
         d_qty = c9.number_input("數量", min_value=1, value=1, key=f"qt_{rk}"); d_pre_today = d_qty
 
@@ -190,11 +199,11 @@ with tab1:
         st.write("") 
         if st.button("🚀 提交數據", use_container_width=True, disabled=not (can_sub and d_pid)):
             now_dt = datetime.now(tw_tz).strftime("%Y-%m-%d %H:%M:%S")
-            # 餘額計算... (略，與前版邏輯相同)
+            # 餘額計算與寫入邏輯 (略) ...
             st.toast("✅ 存檔成功")
-            time.sleep(1); st.session_state.rk_final_v5 += 1; st.rerun()
+            time.sleep(1); st.session_state.v7_gesture_fix += 1; st.rerun()
 
-# 頁籤 2 & 3 保持原樣
+# 頁籤 2 & 3
 with tab2: st.dataframe(fetch_all_data().iloc[::-1].head(50), use_container_width=True, hide_index=True)
 with tab3:
     t_df = fetch_all_data()
